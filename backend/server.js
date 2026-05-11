@@ -29,10 +29,17 @@ const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/finsage';
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB Connected'))
+  .then(() => console.log('✅ MongoDB Connected Successfully'))
   .catch(err => {
-    console.error('MongoDB Connection Error:', err.message);
-    console.log('Server continuing without MongoDB...');
+    if (MONGO_URI.includes('<nikshith>')) {
+        console.log('\n' + '!'.repeat(60));
+        console.log('🚨 CRITICAL SETUP ERROR: DATABASE NOT CONNECTED');
+        console.log('👉 You MUST replace <nikshith> with your password in backend/.env');
+        console.log('!'.repeat(60) + '\n');
+    } else {
+        console.error('❌ MongoDB Connection Error:', err.message);
+    }
+    console.log('⚠️ Server running in OFFLINE mode (Data will not sync between browsers)');
   });
 
 app.listen(PORT, () => {
