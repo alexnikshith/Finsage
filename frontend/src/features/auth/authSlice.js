@@ -12,7 +12,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     loginSuccess: (state, action) => {
-      state.user = { email: action.payload };
+      state.user = action.payload; // Store full user object { username, token, etc. }
       state.isAuthenticated = true;
       state.loading = false;
     },
