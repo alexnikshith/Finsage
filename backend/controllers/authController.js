@@ -2,6 +2,8 @@ const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const JWT_SECRET = 'finsage_ultra_secure_secret_key_2026';
+
 // Temporary in-memory OTP store (In production, use Redis)
 const otpStore = new Map();
 
@@ -77,7 +79,7 @@ exports.verifyOTP = async (req, res) => {
             }
 
             // Generate JWT Token
-            token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+            token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
             
             res.json({ 
                 success: true, 

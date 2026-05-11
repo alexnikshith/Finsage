@@ -31,15 +31,18 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/finsage';
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ MongoDB Connected Successfully'))
   .catch(err => {
+    const censoredUri = MONGO_URI.replace(/:([^@]+)@/, ':****@');
+    console.log(`📡 Attempting connection with: ${censoredUri}`);
+    
     if (MONGO_URI.includes('<nikshith>')) {
         console.log('\n' + '!'.repeat(60));
-        console.log('🚨 CRITICAL SETUP ERROR: DATABASE NOT CONNECTED');
-        console.log('👉 You MUST replace <nikshith> with your password in backend/.env');
+        console.log('🚨 CRITICAL SETUP ERROR: BRACKETS DETECTED');
+        console.log('👉 You must remove the < and > from your password in .env');
         console.log('!'.repeat(60) + '\n');
     } else {
-        console.error('❌ MongoDB Connection Error:', err.message);
+        console.error('❌ MongoDB Auth Failed: Please check if "nikshith" is the correct database password.');
     }
-    console.log('⚠️ Server running in OFFLINE mode (Data will not sync between browsers)');
+    console.log('⚠️ Server running in OFFLINE mode (Local data only)');
   });
 
 app.listen(PORT, () => {

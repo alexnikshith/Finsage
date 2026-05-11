@@ -35,21 +35,22 @@ exports.pullState = async (req, res) => {
     try {
         // Handle Dev Mode
         if (req.user.id === 'dev_user_id') {
-            return res.json({ finance: null }); // Let frontend use local fallback
+            return res.json({ finance: null });
         }
 
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
+        // Ensure we always return a valid structure even for new/old users
         const finance = {
-            monthlySalary: user.monthlySalary,
-            isSalarySet: user.isSalarySet,
-            currency: user.currency,
-            locale: user.locale,
-            transactions: user.transactions,
-            borrows: user.borrows,
-            notifications: user.notifications,
-            monthlyReports: user.monthlyReports
+            monthlySalary: user.monthlySalary || 0,
+            isSalarySet: user.isSalarySet || false,
+            currency: user.currency || 'INR',
+            locale: user.locale || 'en-IN',
+            transactions: user.transactions || [],
+            borrows: user.borrows || [],
+            notifications: user.notifications || [],
+            monthlyReports: user.monthlyReports || []
         };
 
         res.json({ finance });

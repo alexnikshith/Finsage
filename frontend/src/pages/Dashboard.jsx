@@ -58,7 +58,11 @@ const Dashboard = () => {
           <p className="text-slate-400">Manage your salary and track your segment-wise spending.</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest ${transactions.length > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-white/5 border-white/5 text-slate-500'}`}>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Cloud Live</span>
+          </div>
+          <div className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest ${transactions.length > 0 ? 'bg-white/5 border-white/10 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>
             {transactions.length} Transactions Active
           </div>
           <button 
