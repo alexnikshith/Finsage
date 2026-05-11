@@ -163,6 +163,24 @@ const financeSlice = createSlice({
       state.lastResetMonth = now.getMonth();
       state.isSalarySet = false; // This will trigger the salary prompt
     }
+  },
+  extraReducers: (builder) => {
+    builder.addCase('auth/loginSuccess', (state, action) => {
+      const email = action.payload;
+      try {
+        const savedData = localStorage.getItem(`finsage_data_${email}`);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed.finance) {
+            return parsed.finance;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load user data during login:', err);
+      }
+      // If no valid saved data, start entirely fresh
+      return initialState;
+    });
   }
 });
 

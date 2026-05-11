@@ -47,22 +47,9 @@ const LoginPage = () => {
       try {
         await api.post('/auth/verify-otp', { email, otp: enteredOtp });
         
-        // 1. First, set the new session (This triggers the Root Reducer to wipe old data)
         localStorage.setItem('finsage_last_user', email);
         dispatch(loginSuccess(email));
         
-        // 2. Then, restore data for THIS user if it exists
-        const serializedData = localStorage.getItem(`finsage_data_${email}`);
-        if (serializedData) {
-          try {
-            const parsed = JSON.parse(serializedData);
-            if (parsed.finance) {
-              dispatch(hydrateFinance(parsed.finance));
-            }
-          } catch (e) {
-            console.error("Corrupted local data");
-          }
-        }
       } catch (err) {
         setError(err.response?.data?.message || 'Invalid OTP');
       } finally {
@@ -119,7 +106,7 @@ const LoginPage = () => {
                     placeholder="name@company.com"
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-1 focus:ring-white/50 transition-all font-medium"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
                   />
                 </div>
               </div>

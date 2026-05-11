@@ -8,21 +8,9 @@ const appReducer = combineReducers({
 });
 
 const rootReducer = (state, action) => {
-  // Nuclear Reset: If we log out, wipe everything
   if (action.type === 'auth/logout') {
     state = undefined;
   }
-  
-  // Nuclear Switch: If we log in, we must ensure the finance state is fresh 
-  // before the new user's data is potentially loaded or saved.
-  if (action.type === 'auth/loginSuccess') {
-    // We keep the auth part but reset finance to force a clean slate
-    return appReducer({
-      auth: state.auth,
-      finance: undefined // This forces financeSlice to use its initialState
-    }, action);
-  }
-
   return appReducer(state, action);
 };
 
