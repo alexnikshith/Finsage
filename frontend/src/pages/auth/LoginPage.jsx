@@ -70,12 +70,28 @@ const LoginPage = () => {
 
         // 3. Fallback to Local Storage if Cloud is empty
         if (!savedFinance) {
-            const localData = localStorage.getItem(`finsage_data_${normalizedEmail}`);
+            let localData = localStorage.getItem(`finsage_data_${normalizedEmail}`);
+            
+            // 🔍 INTELLIGENT RECOVERY: If no exact match, search for fuzzy matches (case-insensitive/untrimmed)
+            if (!localData) {
+                console.log("🔍 Searching for orphaned local data...");
+                const allKeys = Object.keys(localStorage);
+                const orphanedKey = allKeys.find(key => 
+                    key.startsWith('finsage_data_') && 
+                    key.toLowerCase().trim().includes(normalizedEmail)
+                );
+                
+                if (orphanedKey) {
+                    console.log(`✅ Orphaned data found under key: ${orphanedKey}`);
+                    localData = localStorage.getItem(orphanedKey);
+                }
+            }
+
             if (localData) {
                 try {
                     const parsed = JSON.parse(localData);
                     if (parsed.finance) {
-                        console.log("💾 Local Data Restored");
+                        console.log("💾 Local Data Restored and Migrated");
                         savedFinance = parsed.finance;
                     }
                 } catch (e) {
