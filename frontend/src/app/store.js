@@ -31,13 +31,18 @@ const persistenceMiddleware = store => next => action => {
   const result = next(action);
   const state = store.getState();
   
-  if (state.auth.isAuthenticated && state.auth.user?.email) {
-    const userData = {
-      finance: state.finance,
-      auth: state.auth
-    };
-    localStorage.setItem(`finsage_data_${state.auth.user.email}`, JSON.stringify(userData));
-    localStorage.setItem('finsage_last_user', state.auth.user.email);
+  // 🚨 CRITICAL FIX: Do not save during the login action itself!
+  // The login action wipes the state (Nuclear Reset). If we save here, 
+  // we accidentally overwrite the user's real saved data with an empty state!
+  if (action.type !== 'auth/loginSuccess' && action.type !== 'auth/logout') {
+    if (state.auth.isAuthenticated && state.auth.user?.email) {
+      const userData = {
+        finance: state.finance,
+        auth: state.auth
+      };
+      localStorage.setItem(`finsage_data_${state.auth.user.email}`, JSON.stringify(userData));
+      localStorage.setItem('finsage_last_user', state.auth.user.email);
+    }
   }
 
   if (action.type === 'auth/logout') {
