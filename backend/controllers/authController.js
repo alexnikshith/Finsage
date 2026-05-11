@@ -1,76 +1,72 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};
+// Temporary in-memory OTP store (In production, use Redis)
+const otpStore = new Map();
 
-// @desc    Register new user
-// @route   POST /api/auth/register
-// @access  Public
-exports.register = async (req, res) => {
-  const { username, password, email } = req.body;
-
-  try {
-    const userExists = await User.findOne({ username });
-
-    if (userExists) {
-      return res.status(400).json({ message: 'Username already exists' });
+// Configure transporter for real Gmail
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
     }
+});
 
-    const user = await User.create({
-      username,
-      password,
-      email,
-    });
-
-    if (user) {
-      res.status(201).json({
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        token: generateToken(user._id),
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Authenticate user & get token
-// @route   POST /api/auth/login
-// @access  Public
-exports.login = async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    const user = await User.findOne({ username });
-
-    if (user && (await user.comparePassword(password))) {
-      res.json({
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        token: generateToken(user._id),
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid username or password' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Deprecated OTP methods (Removing as requested)
 exports.sendOTP = async (req, res) => {
-  res.status(410).json({ message: 'OTP Login is deprecated. Please use username and password.' });
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    otpStore.set(email, { otp, expires: Date.now() + 300000 }); // 5 min expiry
+
+    // CLEAR VISIBILITY IN TERMINAL
+    console.log('\n' + '='.repeat(40));
+    console.log(`🔑 FINSAGE AUTH CODE FOR: ${email}`);
+    console.log(`👉 YOUR OTP IS: ${otp}`);
+    console.log('='.repeat(40) + '\n');
+
+    try {
+        // Attempt to send actual email
+        await transporter.sendMail({
+            from: '"FinSage Auth" <auth@finsage.com>',
+            to: email,
+            subject: "Your FinSage Access Code",
+            text: `Your OTP is: ${otp}. It expires in 5 minutes.`,
+            html: `<div style="font-family: sans-serif; padding: 20px;">
+                    <h2 style="color: #000;">FinSage Access Code</h2>
+                    <p>Enter the following code to access your workspace:</p>
+                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; padding: 20px; background: #f4f4f4; border-radius: 10px; display: inline-block;">
+                        ${otp}
+                    </div>
+                    <p style="color: #666; font-size: 12px; margin-top: 20px;">If email delivery fails, check the server terminal for the code.</p>
+                  </div>`
+        });
+        
+        res.json({ message: 'OTP sent successfully to your inbox.' });
+    } catch (error) {
+        console.error('Email Delivery Warning:', error.message);
+        // Clean fix: Still return success so the user can use the OTP from the terminal
+        res.json({ 
+            message: 'OTP generated. (Check server console if email is not received)',
+            devMode: true 
+        });
+    }
 };
 
 exports.verifyOTP = async (req, res) => {
-  res.status(410).json({ message: 'OTP Login is deprecated. Please use username and password.' });
+    const { email, otp } = req.body;
+    const storedData = otpStore.get(email);
+
+    if (!storedData) return res.status(400).json({ message: 'OTP not requested' });
+    if (Date.now() > storedData.expires) {
+        otpStore.delete(email);
+        return res.status(400).json({ message: 'OTP expired' });
+    }
+
+    if (storedData.otp === otp) {
+        otpStore.delete(email);
+        res.json({ success: true, message: 'Verified successfully' });
+    } else {
+        res.status(400).json({ message: 'Invalid OTP' });
+    }
 };

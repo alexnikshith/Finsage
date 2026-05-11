@@ -91,7 +91,6 @@ const Sidebar = () => {
           icon={LogOut} 
           label="Logout" 
           onClick={() => {
-            localStorage.removeItem('finsage_token');
             dispatch(logout());
           }} 
         />

@@ -168,7 +168,31 @@ const financeSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
-    // We handle the clean slate reset here
+    builder.addCase('auth/loginSuccess', (state, action) => {
+      // Priority 1: Data passed directly in the action payload (Atomic)
+      if (action.payload && action.payload.savedFinance) {
+        console.log("⚛️ Atomic Hydration: Using data from action payload");
+        return action.payload.savedFinance;
+      }
+
+      // Priority 2: Fallback to localStorage if payload didn't have it
+      const email = typeof action.payload === 'string' ? action.payload : action.payload.email;
+      try {
+        const savedData = localStorage.getItem(`finsage_data_${email}`);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed.finance) {
+            console.log("💾 Fallback Hydration: Using data from localStorage");
+            return parsed.finance;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load user data during login:', err);
+      }
+      
+      return getInitialState();
+    });
+
     builder.addCase('auth/logout', () => {
       return getInitialState();
     });

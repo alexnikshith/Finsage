@@ -101,7 +101,7 @@ const Settings = () => {
   };
 
   const currentCurrencySymbol = currency === 'INR' ? '₹' : '';
-  const userName = (user && user.username) ? user.username : 'User';
+  const userName = (user && user.email) ? user.email.split('@')[0] : 'User';
 
   return (
     <div className="flex-1 p-8 space-y-8 overflow-y-auto">
