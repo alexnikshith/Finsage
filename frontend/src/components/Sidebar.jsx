@@ -91,7 +91,6 @@ const Sidebar = () => {
           icon={LogOut} 
           label="Logout" 
           onClick={() => {
-            dispatch(hardResetFinance());
             dispatch(logout());
           }} 
         />
