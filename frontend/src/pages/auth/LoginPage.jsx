@@ -45,11 +45,26 @@ const LoginPage = () => {
       setLoading(true);
       setError('');
       try {
-        await api.post('/auth/verify-otp', { email, otp: enteredOtp });
+        const normalizedEmail = email.trim().toLowerCase();
+        await api.post('/auth/verify-otp', { email: normalizedEmail, otp: enteredOtp });
         
-        localStorage.setItem('finsage_last_user', email);
-        dispatch(loginSuccess(email));
+        // 1. Establish session
+        localStorage.setItem('finsage_last_user', normalizedEmail);
+        dispatch(loginSuccess(normalizedEmail));
         
+        // 2. Restore data if it exists
+        const savedData = localStorage.getItem(`finsage_data_${normalizedEmail}`);
+        if (savedData) {
+          try {
+            const parsed = JSON.parse(savedData);
+            if (parsed.finance) {
+              console.log(`📡 Restoring data for: ${normalizedEmail}`);
+              dispatch(hydrateFinance(parsed.finance));
+            }
+          } catch (e) {
+            console.error("Data restoration failed", e);
+          }
+        }
       } catch (err) {
         setError(err.response?.data?.message || 'Invalid OTP');
       } finally {

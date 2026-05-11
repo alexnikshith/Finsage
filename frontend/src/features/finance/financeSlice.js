@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-const initialState = {
+const getInitialState = () => ({
   monthlySalary: 0,
   isSalarySet: false,
   currency: 'INR',
@@ -22,7 +22,9 @@ const initialState = {
     { id: 'health', label: 'Health & Medical', icon: '🏥', color: '#4b5563' },
     { id: 'other', label: 'Other', icon: '📦', color: '#374151' },
   ],
-};
+});
+
+const initialState = getInitialState();
 
 const financeSlice = createSlice({
   name: 'finance',
@@ -56,10 +58,11 @@ const financeSlice = createSlice({
       state.transactions = state.transactions.filter(t => t.id !== action.payload);
     },
     resetFinance: (state) => {
-      return { ...initialState, isSalarySet: state.isSalarySet, monthlySalary: state.monthlySalary };
+      const fresh = getInitialState();
+      return { ...fresh, isSalarySet: state.isSalarySet, monthlySalary: state.monthlySalary };
     },
     hardResetFinance: () => {
-      return initialState;
+      return getInitialState();
     },
     hydrateFinance: (state, action) => {
       return action.payload;
@@ -165,21 +168,9 @@ const financeSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
-    builder.addCase('auth/loginSuccess', (state, action) => {
-      const email = action.payload;
-      try {
-        const savedData = localStorage.getItem(`finsage_data_${email}`);
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          if (parsed.finance) {
-            return parsed.finance;
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load user data during login:', err);
-      }
-      // If no valid saved data, start entirely fresh
-      return initialState;
+    // We handle the clean slate reset here
+    builder.addCase('auth/logout', () => {
+      return getInitialState();
     });
   }
 });
