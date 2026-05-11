@@ -11,8 +11,9 @@ import Calendar from './pages/Calendar'
 import AIInsights from './pages/AIInsights'
 import Settings from './pages/Settings'
 import LoginPage from './pages/auth/LoginPage'
+import { startNewMonth, hydrateFinance } from './features/finance/financeSlice'
+import api from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
-import { startNewMonth } from './features/finance/financeSlice'
 
 function App() {
   const authState = useSelector(state => state.auth) || {};
@@ -20,6 +21,23 @@ function App() {
   const { isAuthenticated } = authState;
   const { lastResetMonth } = financeState;
   const dispatch = useDispatch();
+
+  // Background Cloud Sync Pull
+  useEffect(() => {
+    const syncWithCloud = async () => {
+      if (isAuthenticated) {
+        try {
+          const response = await api.get('/sync/pull');
+          if (response.data?.finance && response.data.finance.isSalarySet) {
+            dispatch(hydrateFinance(response.data.finance));
+          }
+        } catch (err) {
+          console.warn("Cloud pull failed - using local data only");
+        }
+      }
+    };
+    syncWithCloud();
+  }, [isAuthenticated, dispatch]);
 
   // Self-healing Month Watcher
   useEffect(() => {
