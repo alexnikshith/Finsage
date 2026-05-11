@@ -46,25 +46,45 @@ const LoginPage = () => {
       setError('');
       try {
         const normalizedEmail = email.trim().toLowerCase();
-        await api.post('/auth/verify-otp', { email: normalizedEmail, otp: enteredOtp });
+        const response = await api.post('/auth/verify-otp', { email: normalizedEmail, otp: enteredOtp });
+        const { token, user: userData } = response.data;
         
-        // 1. Prepare data for atomic hydration
-        const savedData = localStorage.getItem(`finsage_data_${normalizedEmail}`);
+        // 1. Establish session
+        localStorage.setItem('finsage_token', token);
+        localStorage.setItem('finsage_last_user', normalizedEmail);
+        
+        // 2. Prepare data for atomic hydration (Try Cloud First)
         let savedFinance = null;
-        
-        if (savedData) {
-          try {
-            const parsed = JSON.parse(savedData);
-            if (parsed.finance) {
-              savedFinance = parsed.finance;
+        try {
+            console.log("☁️ Attempting Cloud Sync...");
+            const syncResponse = await api.get('/sync/pull', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (syncResponse.data?.finance && syncResponse.data.finance.isSalarySet) {
+                console.log("✅ Cloud Data Found");
+                savedFinance = syncResponse.data.finance;
             }
-          } catch (e) {
-            console.error("Local data corrupted", e);
-          }
+        } catch (syncError) {
+            console.warn("Cloud Sync Unavailable, falling back to Local Storage");
         }
 
-        // 2. Initialize session atomically (Auth + Finance in one dispatch)
-        localStorage.setItem('finsage_last_user', normalizedEmail);
+        // 3. Fallback to Local Storage if Cloud is empty
+        if (!savedFinance) {
+            const localData = localStorage.getItem(`finsage_data_${normalizedEmail}`);
+            if (localData) {
+                try {
+                    const parsed = JSON.parse(localData);
+                    if (parsed.finance) {
+                        console.log("💾 Local Data Restored");
+                        savedFinance = parsed.finance;
+                    }
+                } catch (e) {
+                    console.error("Local data corrupted", e);
+                }
+            }
+        }
+
+        // 4. Initialize session atomically
         dispatch(loginSuccess({ 
           email: normalizedEmail, 
           savedFinance 

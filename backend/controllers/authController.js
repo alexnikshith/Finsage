@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 // Temporary in-memory OTP store (In production, use Redis)
 const otpStore = new Map();
@@ -59,7 +61,44 @@ exports.verifyOTP = async (req, res) => {
 
     if (storedData.otp === otp) {
         otpStore.delete(email);
-        res.json({ success: true, message: 'Verified successfully' });
+        
+        let user;
+        let token;
+
+        try {
+            // Find or create user in MongoDB
+            user = await User.findOne({ email });
+            if (!user) {
+                user = await User.create({ 
+                    email, 
+                    name: email.split('@')[0], 
+                    password: 'otp_user_no_password' // Placeholder for model requirement
+                });
+            }
+
+            // Generate JWT Token
+            token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+            
+            res.json({ 
+                success: true, 
+                message: 'Verified successfully',
+                token,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    name: user.name
+                }
+            });
+        } catch (dbError) {
+            console.error('Database Error during auth:', dbError.message);
+            // Fallback for development if MongoDB is not connected
+            res.json({ 
+                success: true, 
+                message: 'Verified (Dev Mode - No Database)',
+                token: 'dev_token',
+                user: { email }
+            });
+        }
     } else {
         res.status(400).json({ message: 'Invalid OTP' });
     }

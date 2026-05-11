@@ -1,6 +1,7 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import financeReducer from '../features/finance/financeSlice';
 import authReducer from '../features/auth/authSlice';
+import api from '../services/api';
 
 const appReducer = combineReducers({
   finance: financeReducer,
@@ -13,6 +14,9 @@ const rootReducer = (state, action) => {
   }
   return appReducer(state, action);
 };
+
+// Sync Debouncer
+let syncTimeout = null;
 
 // Middleware to persist state to localStorage and prepare for Cloud Sync
 const persistenceMiddleware = store => next => action => {
@@ -28,13 +32,28 @@ const persistenceMiddleware = store => next => action => {
         finance: state.finance,
         auth: state.auth
       };
+      
+      // 1. Instant Local Backup
       localStorage.setItem(`finsage_data_${state.auth.user.email}`, JSON.stringify(userData));
       localStorage.setItem('finsage_last_user', state.auth.user.email);
+
+      // 2. Debounced Cloud Sync
+      if (syncTimeout) clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(async () => {
+        try {
+            await api.post('/sync/push', { finance: state.finance });
+            console.log("☁️ Cloud Sync Successful");
+        } catch (e) {
+            console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
+        }
+      }, 2000); // Wait 2 seconds of inactivity before pushing to cloud
     }
   }
 
   if (action.type === 'auth/logout') {
     localStorage.removeItem('finsage_last_user');
+    localStorage.removeItem('finsage_token');
+    if (syncTimeout) clearTimeout(syncTimeout);
   }
   
   return result;

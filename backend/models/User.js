@@ -5,7 +5,15 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  currency: { type: String, default: 'USD' },
+  // Finance State
+  monthlySalary: { type: Number, default: 0 },
+  isSalarySet: { type: Boolean, default: false },
+  currency: { type: String, default: 'INR' },
+  locale: { type: String, default: 'en-IN' },
+  transactions: { type: Array, default: [] },
+  borrows: { type: Array, default: [] },
+  notifications: { type: Array, default: [] },
+  monthlyReports: { type: Array, default: [] },
   avatar: String,
   role: { type: String, enum: ['user', 'premium', 'admin'], default: 'user' },
   preferences: {

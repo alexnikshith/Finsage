@@ -18,6 +18,7 @@ app.use(morgan('dev'));
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
+app.use('/api/sync', require('./routes/syncRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'FinSage API is running' });
