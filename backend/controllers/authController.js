@@ -19,38 +19,32 @@ exports.sendOTP = async (req, res) => {
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     otpStore.set(email, { otp, expires: Date.now() + 300000 }); // 5 min expiry
 
-    // CLEAR VISIBILITY IN TERMINAL
+    // CLEAR VISIBILITY IN TERMINAL (Instant)
     console.log('\n' + '='.repeat(40));
     console.log(`🔑 FINSAGE AUTH CODE FOR: ${email}`);
     console.log(`👉 YOUR OTP IS: ${otp}`);
     console.log('='.repeat(40) + '\n');
 
-    try {
-        // Attempt to send actual email
-        await transporter.sendMail({
-            from: '"FinSage Auth" <auth@finsage.com>',
-            to: email,
-            subject: "Your FinSage Access Code",
-            text: `Your OTP is: ${otp}. It expires in 5 minutes.`,
-            html: `<div style="font-family: sans-serif; padding: 20px;">
-                    <h2 style="color: #000;">FinSage Access Code</h2>
-                    <p>Enter the following code to access your workspace:</p>
-                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; padding: 20px; background: #f4f4f4; border-radius: 10px; display: inline-block;">
-                        ${otp}
-                    </div>
-                    <p style="color: #666; font-size: 12px; margin-top: 20px;">If email delivery fails, check the server terminal for the code.</p>
-                  </div>`
-        });
-        
-        res.json({ message: 'OTP sent successfully to your inbox.' });
-    } catch (error) {
-        console.error('Email Delivery Warning:', error.message);
-        // Clean fix: Still return success so the user can use the OTP from the terminal
-        res.json({ 
-            message: 'OTP generated. (Check server console if email is not received)',
-            devMode: true 
-        });
-    }
+    // Respond IMMEDIATELY to the user so they don't wait for SMTP
+    res.json({ message: 'OTP generated. Check your inbox or console.' });
+
+    // Send email in the background
+    transporter.sendMail({
+        from: '"FinSage Auth" <auth@finsage.com>',
+        to: email,
+        subject: "Your FinSage Access Code",
+        text: `Your OTP is: ${otp}. It expires in 5 minutes.`,
+        html: `<div style="font-family: sans-serif; padding: 20px;">
+                <h2 style="color: #000;">FinSage Access Code</h2>
+                <p>Enter the following code to access your workspace:</p>
+                <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; padding: 20px; background: #f4f4f4; border-radius: 10px; display: inline-block;">
+                    ${otp}
+                </div>
+                <p style="color: #666; font-size: 12px; margin-top: 20px;">If email delivery fails, check the server terminal for the code.</p>
+              </div>`
+    }).catch(error => {
+        console.error('Background Email Delivery Failed:', error.message);
+    });
 };
 
 exports.verifyOTP = async (req, res) => {
