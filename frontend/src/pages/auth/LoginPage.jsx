@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '../../features/auth/authSlice';
+import { hydrateFinance, hardResetFinance } from '../../features/finance/financeSlice';
 import api from '../../services/api';
 import { Mail, ShieldCheck, ArrowRight, Wallet, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,8 +46,23 @@ const LoginPage = () => {
       setError('');
       try {
         await api.post('/auth/verify-otp', { email, otp: enteredOtp });
+        
+        // 1. First, set the new session (This triggers the Root Reducer to wipe old data)
         localStorage.setItem('finsage_last_user', email);
         dispatch(loginSuccess(email));
+        
+        // 2. Then, restore data for THIS user if it exists
+        const serializedData = localStorage.getItem(`finsage_data_${email}`);
+        if (serializedData) {
+          try {
+            const parsed = JSON.parse(serializedData);
+            if (parsed.finance) {
+              dispatch(hydrateFinance(parsed.finance));
+            }
+          } catch (e) {
+            console.error("Corrupted local data");
+          }
+        }
       } catch (err) {
         setError(err.response?.data?.message || 'Invalid OTP');
       } finally {

@@ -58,6 +58,12 @@ const financeSlice = createSlice({
     resetFinance: (state) => {
       return { ...initialState, isSalarySet: state.isSalarySet, monthlySalary: state.monthlySalary };
     },
+    hardResetFinance: () => {
+      return initialState;
+    },
+    hydrateFinance: (state, action) => {
+      return action.payload;
+    },
     updateCurrency: (state, action) => {
       state.currency = action.payload.currency;
       state.locale = action.payload.locale;
@@ -157,7 +163,7 @@ const financeSlice = createSlice({
       state.lastResetMonth = now.getMonth();
       state.isSalarySet = false; // This will trigger the salary prompt
     }
-  },
+  }
 });
 
 export const { 
@@ -165,6 +171,8 @@ export const {
   addTransaction, 
   deleteTransaction, 
   resetFinance, 
+  hardResetFinance,
+  hydrateFinance,
   updateCurrency,
   addBorrow,
   repayBorrow,

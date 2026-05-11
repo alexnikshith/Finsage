@@ -11,7 +11,8 @@ import {
   LogOut, 
   ChevronRight,
   Wallet,
-  AlertTriangle
+  AlertTriangle,
+  BrainCircuit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmModal from '../components/modals/ConfirmModal';
@@ -42,8 +43,15 @@ const SettingItem = ({ icon: Icon, title, description, onClick, variant = 'defau
 );
 
 const Settings = () => {
-  const { user } = useSelector(state => state.auth);
-  const { currency = 'INR', locale = 'en-IN', monthlySalary = 0, transactions = [] } = useSelector(state => state.finance) || {};
+  const { user } = useSelector(state => state.auth) || {};
+  const finance = useSelector(state => state.finance) || {};
+  const { 
+    currency = 'INR', 
+    locale = 'en-IN', 
+    monthlySalary = 0, 
+    transactions = [] 
+  } = finance;
+  
   const dispatch = useDispatch();
 
   const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
@@ -60,18 +68,23 @@ const Settings = () => {
   ];
 
   const handleExportData = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `finsage_backup_${new Date().toLocaleDateString()}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    try {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", `finsage_backup_${new Date().toLocaleDateString()}.json`);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
   };
 
   const handleUpdateSalary = () => {
-    if (newSalary > 0) {
-      dispatch(setMonthlySalary(Number(newSalary)));
+    const amount = Number(newSalary);
+    if (!isNaN(amount) && amount > 0) {
+      dispatch(setMonthlySalary(amount));
       setIsSalaryModalOpen(false);
       setNewSalary('');
     }
@@ -87,7 +100,8 @@ const Settings = () => {
     setIsCurrencyModalOpen(false);
   };
 
-  const currentCurrencySymbol = currencies.find(c => c.code === currency)?.code === 'INR' ? '₹' : '';
+  const currentCurrencySymbol = currency === 'INR' ? '₹' : '';
+  const userName = (user && user.email) ? user.email.split('@')[0] : 'User';
 
   return (
     <div className="flex-1 p-8 space-y-8 overflow-y-auto">
@@ -95,11 +109,20 @@ const Settings = () => {
       <AnimatePresence>
         {isCurrencyModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="glass-morphism w-full max-w-md p-8 rounded-[3rem] border border-white/10 space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="glass-morphism w-full max-w-md p-8 rounded-[3rem] border border-white/10 space-y-6"
+            >
               <h3 className="text-2xl font-bold">Select Currency</h3>
               <div className="grid grid-cols-1 gap-3">
                 {currencies.map((c) => (
-                  <button key={c.code} onClick={() => handleCurrencyChange(c)} className={`w-full p-5 rounded-2xl border text-left transition-all ${currency === c.code ? 'bg-white text-black border-white' : 'bg-white/5 text-white border-white/10 hover:border-white/30'}`}>
+                  <button 
+                    key={c.code} 
+                    onClick={() => handleCurrencyChange(c)} 
+                    className={`w-full p-5 rounded-2xl border text-left transition-all ${currency === c.code ? 'bg-white text-black border-white' : 'bg-white/5 text-white border-white/10 hover:border-white/30'}`}
+                  >
                     <div className="font-bold">{c.name}</div>
                     <div className="text-xs opacity-50 uppercase tracking-widest">{c.code} — {c.locale}</div>
                   </button>
@@ -114,7 +137,12 @@ const Settings = () => {
       <AnimatePresence>
         {isSalaryModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="glass-morphism w-full max-w-md p-8 rounded-[3rem] border border-white/10 space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }} 
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="glass-morphism w-full max-w-md p-8 rounded-[3rem] border border-white/10 space-y-6"
+            >
               <h3 className="text-2xl font-bold">Update Monthly Salary</h3>
               <div className="space-y-4">
                 <div className="space-y-1">
@@ -163,8 +191,8 @@ const Settings = () => {
               <User size={40} />
             </div>
             <div>
-              <h4 className="text-2xl font-bold">{user?.email?.split('@')[0]}</h4>
-              <p className="text-slate-500 font-medium">{user?.email}</p>
+              <h4 className="text-2xl font-bold">{userName}</h4>
+              <p className="text-slate-500 font-medium">{user?.email || 'No email provided'}</p>
               <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-bold uppercase tracking-wider">
                 <Shield size={12} />
                 Verified Account
@@ -181,9 +209,9 @@ const Settings = () => {
               icon={Wallet} 
               title="Monthly Salary" 
               description="Update your base monthly income." 
-              activeValue={`${currentCurrencySymbol}${monthlySalary}`}
+              activeValue={`${currentCurrencySymbol}${monthlySalary || 0}`}
               onClick={() => {
-                setNewSalary(monthlySalary.toString());
+                setNewSalary((monthlySalary || 0).toString());
                 setIsSalaryModalOpen(true);
               }} 
             />
@@ -191,7 +219,7 @@ const Settings = () => {
               icon={CreditCard} 
               title="Currency & Locale" 
               description="Change how amounts are displayed." 
-              activeValue={currencies.find(c => c.code === currency)?.name}
+              activeValue={currencies.find(c => c.code === currency)?.name || currency}
               onClick={() => setIsCurrencyModalOpen(true)} 
             />
             <SettingItem 

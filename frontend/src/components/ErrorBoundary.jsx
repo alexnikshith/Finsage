@@ -26,11 +26,11 @@ class ErrorBoundary extends React.Component {
             <button 
               onClick={() => {
                 // Only clear the finance state to repair logic, but keep the session
-                const userEmail = localStorage.getItem('last_user');
+                const userEmail = localStorage.getItem('finsage_last_user');
                 if (userEmail) {
-                   localStorage.removeItem(`finsage_state_${userEmail}`);
+                   localStorage.removeItem(`finsage_data_${userEmail}`);
                 }
-                window.location.href = '/';
+                window.location.reload();
               }}
               className="bg-white text-black px-8 py-4 rounded-2xl font-bold w-full hover:bg-slate-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]"
             >

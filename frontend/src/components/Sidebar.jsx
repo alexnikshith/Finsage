@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
+import { hardResetFinance } from '../features/finance/financeSlice';
 import { 
   LayoutDashboard, 
   Wallet, 
@@ -86,7 +87,14 @@ const Sidebar = () => {
 
       <div className="pt-6 border-t border-white/5 space-y-2">
         <SidebarItem icon={Settings} label="Settings" to="/settings" />
-        <SidebarItem icon={LogOut} label="Logout" onClick={() => dispatch(logout())} />
+        <SidebarItem 
+          icon={LogOut} 
+          label="Logout" 
+          onClick={() => {
+            dispatch(hardResetFinance());
+            dispatch(logout());
+          }} 
+        />
       </div>
     </div>
   );

@@ -1,6 +1,30 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import financeReducer from '../features/finance/financeSlice';
 import authReducer from '../features/auth/authSlice';
+
+const appReducer = combineReducers({
+  finance: financeReducer,
+  auth: authReducer,
+});
+
+const rootReducer = (state, action) => {
+  // Nuclear Reset: If we log out, wipe everything
+  if (action.type === 'auth/logout') {
+    state = undefined;
+  }
+  
+  // Nuclear Switch: If we log in, we must ensure the finance state is fresh 
+  // before the new user's data is potentially loaded or saved.
+  if (action.type === 'auth/loginSuccess') {
+    // We keep the auth part but reset finance to force a clean slate
+    return appReducer({
+      auth: state.auth,
+      finance: undefined // This forces financeSlice to use its initialState
+    }, action);
+  }
+
+  return appReducer(state, action);
+};
 
 // Middleware to persist state to localStorage and prepare for Cloud Sync
 const persistenceMiddleware = store => next => action => {
@@ -12,21 +36,17 @@ const persistenceMiddleware = store => next => action => {
       finance: state.finance,
       auth: state.auth
     };
-    // 1. Local Persistence (Fast)
     localStorage.setItem(`finsage_data_${state.auth.user.email}`, JSON.stringify(userData));
     localStorage.setItem('finsage_last_user', state.auth.user.email);
-    
-    // 2. Cloud Sync (Async) - If a finance action occurred
-    if (action.type.startsWith('finance/')) {
-      console.log('☁️ Cloud Sync Triggered for:', action.type);
-      // We will implement the actual API call in the background
-    }
+  }
+
+  if (action.type === 'auth/logout') {
+    localStorage.removeItem('finsage_last_user');
   }
   
   return result;
 };
 
-// Function to load state from localStorage
 const loadState = () => {
   try {
     const lastUser = localStorage.getItem('finsage_last_user');
@@ -34,29 +54,17 @@ const loadState = () => {
       const serializedState = localStorage.getItem(`finsage_data_${lastUser}`);
       if (serializedState === null) return undefined;
       const parsed = JSON.parse(serializedState);
-      
-      // Safety check: Ensure auth and finance slices exist
-      if (!parsed.auth || !parsed.finance) {
-        console.warn('Incomplete state found in localStorage. Resetting...');
-        return undefined;
-      }
-      
+      if (!parsed.auth || !parsed.finance) return undefined;
       return parsed;
     }
   } catch (err) {
-    console.error('Failed to load state:', err);
     return undefined;
   }
   return undefined;
 };
 
-const preloadedState = loadState();
-
 export const store = configureStore({
-  reducer: {
-    finance: financeReducer,
-    auth: authReducer,
-  },
-  preloadedState,
+  reducer: rootReducer,
+  preloadedState: loadState(),
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(persistenceMiddleware),
 });
