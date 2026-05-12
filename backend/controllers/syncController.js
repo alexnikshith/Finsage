@@ -19,9 +19,11 @@ exports.pushState = async (req, res) => {
         user.currency = finance.currency;
         user.locale = finance.locale;
         user.transactions = finance.transactions;
+        user.categories = finance.categories;
         user.borrows = finance.borrows;
         user.notifications = finance.notifications;
         user.monthlyReports = finance.monthlyReports;
+        user.lastResetMonth = finance.lastResetMonth;
 
         await user.save();
         res.json({ success: true, message: 'Cloud sync complete' });
@@ -48,9 +50,11 @@ exports.pullState = async (req, res) => {
             currency: user.currency || 'INR',
             locale: user.locale || 'en-IN',
             transactions: user.transactions || [],
+            categories: user.categories || {},
             borrows: user.borrows || [],
             notifications: user.notifications || [],
-            monthlyReports: user.monthlyReports || []
+            monthlyReports: user.monthlyReports || [],
+            lastResetMonth: user.lastResetMonth || new Date().getMonth()
         };
 
         res.json({ finance });
