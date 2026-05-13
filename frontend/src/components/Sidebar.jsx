@@ -9,7 +9,6 @@ import {
   Target, 
   HandCoins,
   BrainCircuit, 
-  History, 
   Settings,
   LogOut,
   Bell,
@@ -82,7 +81,7 @@ const Sidebar = () => {
         <SidebarItem icon={Bell} label="Notifications" to="/notifications" badge={unreadNotifications} />
         <SidebarItem icon={Calendar} label="Calendar" to="/calendar" />
         <SidebarItem icon={BrainCircuit} label="AI Insights" to="/ai-insights" />
-        <SidebarItem icon={History} label="History" to="/history" />
+
       </div>
 
       <div className="pt-6 border-t border-white/5 space-y-2">

@@ -71,7 +71,6 @@ function App() {
                       <Route path="/notifications" element={<Notifications />} />
                       <Route path="/calendar" element={<Calendar />} />
                       <Route path="/ai-insights" element={<AIInsights />} />
-                      <Route path="/history" element={<Transactions />} />
                       <Route path="/settings" element={<Settings />} />
                     </Routes>
                   </div>
