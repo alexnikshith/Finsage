@@ -8,7 +8,7 @@ const auth = require('../middleware/auth'); // Assuming you have an auth middlew
 // @access  Private
 router.get('/', async (req, res) => {
   try {
-    const transactions = await Transaction.find({ user: req.user.id }).sort({ date: -1 });
+    const transactions = await Transaction.find({ userId: req.user.id }).sort({ date: -1 });
     res.json(transactions);
   } catch (err) {
     console.error(err.message);
@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 // @desc    Add new transaction
 // @access  Private
 router.post('/', async (req, res) => {
-  const { title, amount, type, category, date, note } = req.body;
+  const { title, amount, type, category, date, note, source, merchant, confidenceScore, receiptImageUrl } = req.body;
 
   try {
     const newTransaction = new Transaction({
@@ -30,7 +30,11 @@ router.post('/', async (req, res) => {
       category,
       date,
       note,
-      user: req.user.id
+      source,
+      merchant,
+      confidenceScore,
+      receiptImageUrl,
+      userId: req.user.id
     });
 
     const transaction = await newTransaction.save();
@@ -49,11 +53,11 @@ router.delete('/:id', async (req, res) => {
     const transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) return res.status(404).json({ msg: 'Transaction not found' });
-    if (transaction.user.toString() !== req.user.id) {
+    if (transaction.userId.toString() !== req.user.id) {
       return res.status(401).json({ msg: 'User not authorized' });
     }
 
-    await transaction.remove();
+    await transaction.deleteOne(); // Use deleteOne() since remove() is deprecated in modern Mongoose
     res.json({ msg: 'Transaction removed' });
   } catch (err) {
     console.error(err.message);

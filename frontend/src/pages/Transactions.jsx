@@ -1,15 +1,17 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { deleteTransaction } from '../features/finance/financeSlice';
-import { Trash2, ShoppingBag, Utensils, Home, Car, Film, Heart, Package } from 'lucide-react';
+import { Trash2, ShoppingBag, Utensils, FileText, Car, Film, Heart, Package, ShoppingCart, GraduationCap } from 'lucide-react';
 
 const categoryIcons = {
   food: Utensils,
-  rent: Home,
+  groceries: ShoppingCart,
   transport: Car,
-  entertainment: Film,
   shopping: ShoppingBag,
+  bills: FileText,
+  entertainment: Film,
   health: Heart,
+  education: GraduationCap,
   other: Package,
 };
 

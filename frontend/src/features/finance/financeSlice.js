@@ -14,13 +14,15 @@ const getInitialState = () => ({
   ],
   monthlyReports: [],
   categories: [
-    { id: 'food', label: 'Food & Dining', icon: '🍔', color: '#ffffff' },
-    { id: 'rent', label: 'Rent & Bills', icon: '🏠', color: '#e5e7eb' },
-    { id: 'transport', label: 'Transport', icon: '🚗', color: '#d1d5db' },
-    { id: 'entertainment', label: 'Entertainment', icon: '🎬', color: '#9ca3af' },
-    { id: 'shopping', label: 'Shopping', icon: '🛍️', color: '#6b7280' },
-    { id: 'health', label: 'Health & Medical', icon: '🏥', color: '#4b5563' },
-    { id: 'other', label: 'Other', icon: '📦', color: '#374151' },
+    { id: 'food', label: 'Food', icon: '🍔', color: '#ffffff' },
+    { id: 'groceries', label: 'Groceries', icon: '🛒', color: '#e5e7eb' },
+    { id: 'transport', label: 'Transportation', icon: '🚗', color: '#d1d5db' },
+    { id: 'shopping', label: 'Shopping', icon: '🛍️', color: '#9ca3af' },
+    { id: 'bills', label: 'Bills', icon: '📄', color: '#6b7280' },
+    { id: 'entertainment', label: 'Entertainment', icon: '🎬', color: '#4b5563' },
+    { id: 'health', label: 'Healthcare', icon: '🏥', color: '#374151' },
+    { id: 'education', label: 'Education', icon: '🎓', color: '#1f2937' },
+    { id: 'other', label: 'Others', icon: '📦', color: '#111827' },
   ],
 });
 
@@ -40,16 +42,20 @@ const financeSlice = createSlice({
         state.transactions = [];
       }
       
-      const { amount, title, description, category, type, date } = action.payload;
+      const { amount, title, description, category, type, date, source, merchant, confidenceScore, receiptImageUrl } = action.payload;
       
       const newTransaction = {
         id: Date.now(),
-        title: title || description || 'Manual Entry',
+        title: title || merchant || description || 'Manual Entry',
         amount: Number(amount) || 0,
         description: description || '',
         category: category || 'other',
         type: type || 'expense',
-        date: date || new Date().toISOString()
+        date: date || new Date().toISOString(),
+        source: source || 'manual',
+        merchant: merchant || '',
+        confidenceScore: confidenceScore !== undefined ? confidenceScore : 1.0,
+        receiptImageUrl: receiptImageUrl || ''
       };
 
       state.transactions.push(newTransaction);

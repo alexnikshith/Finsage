@@ -10,6 +10,9 @@ const TransactionSchema = new mongoose.Schema({
   merchant: String,
   paymentMethod: String,
   isRecurring: { type: Boolean, default: false },
+  source: { type: String, enum: ['manual', 'camera', 'voice'], default: 'manual' },
+  confidenceScore: { type: Number, default: 1.0 },
+  receiptImageUrl: String,
   aiMetadata: {
     categorizationConfidence: Number,
     isUnusual: { type: Boolean, default: false },
