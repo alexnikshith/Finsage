@@ -60,9 +60,11 @@ const LoginPage = () => {
             const syncResponse = await api.get('/sync/pull', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (syncResponse.data?.finance && syncResponse.data.finance.isSalarySet) {
-                console.log("✅ Cloud Data Found");
-                savedFinance = syncResponse.data.finance;
+            // Accept cloud data if it contains any meaningful data (not just if salary is set)
+            const cloudFinance = syncResponse.data?.finance;
+            if (cloudFinance && Array.isArray(cloudFinance.transactions)) {
+                console.log("✅ Cloud Data Found", `(${cloudFinance.transactions.length} transactions)`);
+                savedFinance = cloudFinance;
             }
         } catch (syncError) {
             console.warn("Cloud Sync Unavailable, falling back to Local Storage");

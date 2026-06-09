@@ -37,16 +37,27 @@ const persistenceMiddleware = store => next => action => {
       localStorage.setItem(`finsage_data_${state.auth.user.email}`, JSON.stringify(userData));
       localStorage.setItem('finsage_last_user', state.auth.user.email);
 
-      // 2. Debounced Cloud Sync
-      if (syncTimeout) clearTimeout(syncTimeout);
-      syncTimeout = setTimeout(async () => {
-        try {
-            await api.post('/sync/push', { finance: state.finance });
-            console.log("☁️ Cloud Sync Successful");
-        } catch (e) {
-            console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
-        }
-      }, 2000); // Wait 2 seconds of inactivity before pushing to cloud
+      // 2. Cloud Sync: immediate for transaction changes, debounced for everything else
+      const isTransactionChange = action.type === 'finance/addTransaction' || action.type === 'finance/deleteTransaction';
+
+      if (isTransactionChange) {
+        // Push immediately so refresh / cross-device sees up-to-date data
+        if (syncTimeout) clearTimeout(syncTimeout);
+        api.post('/sync/push', { finance: state.finance })
+          .then(() => console.log("☁️ Cloud Sync Successful (instant)"))
+          .catch(() => console.warn("☁️ Cloud Sync Pending (Offline or DB Down)"));
+      } else {
+        // Debounce non-critical state changes (salary, currency, etc.)
+        if (syncTimeout) clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(async () => {
+          try {
+              await api.post('/sync/push', { finance: state.finance });
+              console.log("☁️ Cloud Sync Successful");
+          } catch (e) {
+              console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
+          }
+        }, 2000);
+      }
     }
   }
 
