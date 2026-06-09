@@ -55,6 +55,65 @@ const uploadToCloudinary = (buffer) => {
   });
 };
 
+// Helper to clean and extract numeric amounts from Gemini output strings
+function cleanAmount(amt) {
+  if (amt === undefined || amt === null) return 0;
+  if (typeof amt === 'number') return amt;
+  
+  // Strip out commas and trim whitespace
+  const str = String(amt).replace(/,/g, '').trim();
+  // Find first decimal/digit sequence
+  const match = str.match(/[\d\.]+/);
+  if (match) {
+    const val = Number(match[0]);
+    return isNaN(val) ? 0 : val;
+  }
+  return 0;
+}
+
+// Helper to normalize the category to one of the strict IDs supported by the frontend
+function normalizeCategory(cat) {
+  if (!cat) return 'other';
+  const clean = cat.toLowerCase().trim();
+
+  // 1. Food
+  if (['food', 'dining', 'dinner', 'lunch', 'breakfast', 'restaurant', 'cafe', 'eat', 'eating', 'beverage', 'drinks', 'pizza', 'burger', 'swiggy', 'zomato', 'starbucks'].some(k => clean.includes(k))) {
+    return 'food';
+  }
+  // 2. Groceries
+  if (['grocery', 'groceries', 'supermarket', 'mart', 'market', 'vegetables', 'fruits', 'milk', 'provisions', 'blinkit', 'zepto', 'instamart'].some(k => clean.includes(k))) {
+    return 'groceries';
+  }
+  // 3. Transport
+  if (['transport', 'transportation', 'travel', 'cab', 'taxi', 'uber', 'ola', 'auto', 'metro', 'bus', 'train', 'flight', 'ticket', 'petrol', 'fuel', 'diesel', 'gasoline', 'toll', 'parking'].some(k => clean.includes(k))) {
+    return 'transport';
+  }
+  // 4. Shopping
+  if (['shopping', 'clothing', 'clothes', 'shoes', 'apparel', 'amazon', 'flipkart', 'myntra', 'electronic', 'device', 'gadget', 'accessory'].some(k => clean.includes(k))) {
+    return 'shopping';
+  }
+  // 5. Bills
+  if (['bill', 'bills', 'rent', 'electricity', 'power', 'water', 'gas', 'utility', 'utilities', 'recharge', 'phone', 'mobile', 'wifi', 'internet', 'broadband', 'subscription', 'netflix', 'spotify', 'youtube', 'prime'].some(k => clean.includes(k))) {
+    return 'bills';
+  }
+  // 6. Entertainment
+  if (['entertainment', 'movie', 'cinema', 'theatre', 'show', 'concert', 'game', 'gaming', 'bowling', 'park', 'club', 'bar', 'pub', 'party'].some(k => clean.includes(k))) {
+    return 'entertainment';
+  }
+  // 7. Health
+  if (['health', 'healthcare', 'medical', 'medicine', 'medicines', 'pharmacy', 'doctor', 'clinic', 'hospital', 'dentist'].some(k => clean.includes(k))) {
+    return 'health';
+  }
+  // 8. Education
+  if (['education', 'school', 'college', 'course', 'class', 'book', 'books', 'stationery', 'fee', 'fees', 'tuition', 'tutorial'].some(k => clean.includes(k))) {
+    return 'education';
+  }
+  
+  const VALID_CATEGORIES = ['food', 'groceries', 'transport', 'shopping', 'bills', 'entertainment', 'health', 'education', 'other'];
+  if (VALID_CATEGORIES.includes(clean)) return clean;
+  return 'other';
+}
+
 /**
  * Perform OCR and categorization on uploaded receipt image using Gemini AI
  */
@@ -100,7 +159,7 @@ exports.scanReceipt = async (req, res) => {
 You must return only a valid JSON object matching this schema, without any markdown formatting:
 {
   "merchant": "Name of the merchant/store (string)",
-  "amount": total amount paid (number),
+  "amount": total final grand total paid (number, e.g. 525.00 - ignore subtotal/tax breakdowns, look for the final net payment amount after any discounts/taxes)",
   "date": "Date of transaction in YYYY-MM-DD format (string, or null if not found/unclear)",
   "category": "one of: food, groceries, transport, shopping, bills, entertainment, health, education, other",
   "confidence": confidence score between 0.0 and 1.0 based on readability and categorization certainty (number)",
@@ -113,14 +172,14 @@ You must return only a valid JSON object matching this schema, without any markd
 }
 
 Guidelines for assigning categories:
-- food: Restaurants, fast food, coffee shops, pizza, cafés
-- groceries: Supermarkets, convenience stores, grocery supplies, fresh food ingredients
-- transport: Fuel, petrol, diesel, taxi, Uber, bus, train, flight, parking
-- shopping: Apparel, clothes, shoes, electronics, books, accessories
-- bills: Utilities, rent, internet, electricity, mobile bills, online subscriptions (e.g., Netflix, Spotify)
-- entertainment: Movie theatres, concert tickets, bowling, games, parks
-- health: Pharmacy, medicines, doctor visits, hospital bills
-- education: School fees, textbooks, online courses, tutorials
+- food: Restaurants, fast food, coffee shops, pizza, cafés, dinner, lunch, breakfast, beverages
+- groceries: Supermarkets, grocery stores, grocery supplies, fresh food ingredients, fruits/vegetables, milk
+- transport: Fuel, petrol, diesel, taxi, Uber, Ola, bus, train, flights, parking, tolls
+- shopping: Apparel, clothes, shoes, electronics, books, retail items, online shopping (e.g. Amazon)
+- bills: Utilities, rent, electricity, water, internet, phone bill, online subscriptions (Netflix, Spotify)
+- entertainment: Movie theatres, concert tickets, bowling, games, parks, bars, pubs
+- health: Pharmacy, medicines, doctor visits, healthcare bills, dentist
+- education: School fees, tuition, online courses, textbooks, tutorials
 - other: Miscellaneous expenses that do not fit the above categories
 
 Return only the raw JSON. Do not write any explanations. Do not include markdown code block syntax.`;
@@ -142,9 +201,9 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
       receiptImageUrl: uploadResult.secure_url,
       data: {
         merchant: extractedData.merchant || "Unknown Merchant",
-        amount: Number(extractedData.amount) || 0,
+        amount: cleanAmount(extractedData.amount),
         date: extractedData.date || new Date().toISOString().split('T')[0],
-        category: extractedData.category || "other",
+        category: normalizeCategory(extractedData.category),
         confidence: Number(extractedData.confidence) || 0.7,
         items: extractedData.items || []
       }
@@ -185,22 +244,22 @@ Extract the details and return them in JSON format.
 You must return only a valid JSON object matching this schema, without any markdown formatting:
 {
   "merchant": "Name of the merchant/store if explicitly mentioned (string, or null if not mentioned)",
-  "amount": total amount paid (number, or null if not mentioned)",
-  "date": "relative date described, e.g., 'today', 'yesterday' (string, or null if not mentioned)",
+  "amount": total final grand total amount paid (number, e.g., 1200 or 450 - extract digits only)",
+  "date": "Date of transaction in YYYY-MM-DD format (string, use today's date ${new Date().toISOString().split('T')[0]} if relative words like 'today', 'just now' are used; calculate relative date if 'yesterday' or days of the week are mentioned, otherwise null)",
   "category": "one of: food, groceries, transport, shopping, bills, entertainment, health, education, other",
   "confidence": confidence score between 0.0 and 1.0 based on clarity and categorization certainty (number)"
 }
 
-Use the same categorization rules:
-- food: Restaurants, fast food, coffee shops, pizza, cafés, food delivery
-- groceries: Supermarkets, convenience stores, grocery supplies, fresh food ingredients
-- transport: Fuel, petrol, diesel, taxi, Uber, bus, train, flight, parking
-- shopping: Apparel, clothes, shoes, electronics, books, accessories
-- bills: Utilities, rent, internet, electricity, mobile bills, online subscriptions (e.g., Netflix, Spotify)
-- entertainment: Movie theatres, concert tickets, bowling, games, parks
-- health: Pharmacy, medicines, doctor visits, hospital bills
-- education: School fees, textbooks, online courses, tutorials
-- other: Miscellaneous expenses that do not fit the above categories
+Guidelines for assigning categories:
+- food: Eating out, dinner, dinner with friends, lunch, breakfast, burger, pizza, cafe, food delivery (Swiggy, Zomato)
+- groceries: Supermarkets, grocery items, milk, vegetables, grocery stores, Blinkit, Zepto
+- transport: Petrol, diesel, fuel, Uber, cab, taxi, metro, bus, parking, auto, flight
+- shopping: Clothing, shoes, retail shop, electronics, shopping on Amazon/Flipkart
+- bills: Electricity bill, rent, water, internet/broadband bill, mobile recharge, subscriptions (Netflix, Spotify)
+- entertainment: Movie, cinema, show, concert, gaming, bowling, pub, bar, party
+- health: Pharmacy, medicines, doctor, clinic, hospital
+- education: Course, books, tuition fee, school/college fees, tutorial
+- other: Any miscellaneous expenses that do not fit the above categories
 
 Return only the raw JSON. Do not write any explanations. Do not include markdown code block syntax.`;
 
@@ -220,9 +279,9 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
       success: true,
       data: {
         merchant: extractedData.merchant || null,
-        amount: Number(extractedData.amount) || 0,
+        amount: cleanAmount(extractedData.amount),
         date: extractedData.date || new Date().toISOString().split('T')[0],
-        category: extractedData.category || "other",
+        category: normalizeCategory(extractedData.category),
         confidence: Number(extractedData.confidence) || 0.7
       }
     });
@@ -230,5 +289,83 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
   } catch (err) {
     console.error("Voice Processing Controller Error:", err.message);
     res.status(500).json({ message: "Server error during voice input processing." });
+  }
+};
+
+/**
+ * Parse an uploaded voice audio file and extract amount, category, merchant, and date using Gemini AI
+ */
+exports.processVoiceFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No audio file uploaded." });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn("⚠️ GEMINI_API_KEY missing. Simulating audio voice parsing.");
+      return res.json({
+        success: true,
+        data: {
+          merchant: "Petrol Station",
+          amount: 1200,
+          date: new Date().toISOString().split('T')[0],
+          category: "transport",
+          confidence: 0.95
+        }
+      });
+    }
+
+    // Process with Gemini 1.5 Flash
+    const audioPart = fileToGenerativePart(req.file.buffer, req.file.mimetype);
+    const prompt = `Listen to this audio recording describing an expense transaction.
+Extract the transaction details and return them in JSON format.
+You must return only a valid JSON object matching this schema, without any markdown formatting:
+{
+  "merchant": "Name of the merchant/store if explicitly mentioned (string, or null if not mentioned)",
+  "amount": total final grand total amount paid (number, e.g., 1200 or 450 - extract digits only)",
+  "date": "Date of transaction in YYYY-MM-DD format (string, use today's date ${new Date().toISOString().split('T')[0]} if relative words like 'today', 'just now' are used; calculate relative date if 'yesterday' or days of the week are mentioned, otherwise null)",
+  "category": "one of: food, groceries, transport, shopping, bills, entertainment, health, education, other",
+  "confidence": confidence score between 0.0 and 1.0 based on clarity and categorization certainty (number)"
+}
+
+Guidelines for assigning categories:
+- food: Eating out, dinner, dinner with friends, lunch, breakfast, burger, pizza, cafe, food delivery (Swiggy, Zomato)
+- groceries: Supermarkets, grocery items, milk, vegetables, grocery stores, Blinkit, Zepto
+- transport: Petrol, diesel, fuel, Uber, cab, taxi, metro, bus, parking, auto, flight
+- shopping: Clothing, shoes, retail shop, electronics, shopping on Amazon/Flipkart
+- bills: Electricity bill, rent, water, internet/broadband bill, mobile recharge, subscriptions (Netflix, Spotify)
+- entertainment: Movie, cinema, show, concert, gaming, bowling, pub, bar, party
+- health: Pharmacy, medicines, doctor, clinic, hospital
+- education: Course, books, tuition fee, school/college fees, tutorial
+- other: Any miscellaneous expenses that do not fit the above categories
+
+Return only the raw JSON. Do not write any explanations. Do not include markdown code block syntax.`;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent([prompt, audioPart]);
+    const responseText = result.response.text();
+
+    let extractedData;
+    try {
+      extractedData = extractJSON(responseText);
+    } catch (parseErr) {
+      console.error("Gemini Audio Voice Parse Error:", parseErr.message, "Response:", responseText);
+      return res.status(500).json({ message: "AI voice parsing completed, but response was in an invalid format." });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        merchant: extractedData.merchant || null,
+        amount: cleanAmount(extractedData.amount),
+        date: extractedData.date || new Date().toISOString().split('T')[0],
+        category: normalizeCategory(extractedData.category),
+        confidence: Number(extractedData.confidence) || 0.7
+      }
+    });
+
+  } catch (err) {
+    console.error("Voice Audio Processing Controller Error:", err.message);
+    res.status(500).json({ message: "Server error during voice audio processing." });
   }
 };

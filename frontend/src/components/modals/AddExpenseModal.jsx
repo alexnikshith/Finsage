@@ -36,6 +36,8 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const formatCurrency = (val) => new Intl.NumberFormat(locale, { 
     style: 'currency', 
@@ -75,6 +77,13 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
     setIsListening(false);
     setSpeechText('');
     stopCamera();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.error("Error stopping media recorder on reset:", err);
+      }
+    }
   };
 
   // Camera Management
@@ -161,50 +170,66 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
     }
   };
 
-  // Speech Recognition Management
-  const startSpeechRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
-      return;
-    }
-    
-    const rec = new SpeechRecognition();
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.lang = 'en-US';
-    
-    rec.onstart = () => {
+  // Voice Recording Management
+  const startVoiceRecording = async () => {
+    try {
+      audioChunksRef.current = [];
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      const options = { mimeType: 'audio/webm' };
+      let recorder;
+      try {
+        recorder = new MediaRecorder(audioStream, options);
+      } catch (e) {
+        recorder = new MediaRecorder(audioStream);
+      }
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        audioStream.getTracks().forEach(track => track.stop());
+        
+        if (audioBlob.size > 0) {
+          await uploadAndProcessVoice(audioBlob);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(200);
       setIsListening(true);
       setMode('voice');
-      setSpeechText('Listening...');
-    };
-    
-    rec.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setSpeechText(transcript);
-      processVoiceInput(transcript);
-    };
-    
-    rec.onerror = (err) => {
-      console.error("Speech Recognition Error:", err);
-      alert("Voice input failed: " + err.error);
+      setSpeechText('Listening... Speak your expense details clearly.');
+    } catch (err) {
+      console.error("Microphone access error:", err);
+      alert("Could not access microphone. Please check permissions in your browser.");
       setMode('form');
       setIsListening(false);
-    };
-    
-    rec.onend = () => {
-      setIsListening(false);
-    };
-    
-    rec.start();
+    }
   };
 
-  const processVoiceInput = async (transcript) => {
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const uploadAndProcessVoice = async (audioBlob) => {
     setMode('processing');
-    setProcessingMessage('AI Voice Assistant parsing statement...');
+    setProcessingMessage('AI Voice Assistant analyzing audio statement...');
     try {
-      const res = await api.post('/ai/process-voice', { text: transcript });
+      const formData = new FormData();
+      formData.append('voice', audioBlob, 'voice.webm');
+      
+      const res = await api.post('/ai/process-voice-file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
       if (res.data && res.data.success) {
         const extracted = res.data.data;
         setExtractedData({
@@ -223,7 +248,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
       }
     } catch (err) {
       console.error("Voice Processing Error:", err);
-      alert(err.response?.data?.message || "Error processing voice input.");
+      alert(err.response?.data?.message || "Error processing voice input. Please try again.");
       setMode('form');
     }
   };
@@ -298,7 +323,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={startSpeechRecognition}
+                  onClick={startVoiceRecording}
                   className="p-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold border border-white/5 active:scale-95"
                   title="Enter expense by voice"
                 >
@@ -443,7 +468,16 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
             className="glass-morphism w-full max-w-sm p-8 rounded-[2.5rem] space-y-6 shadow-2xl border border-white/10 relative text-center"
           >
             <button 
-              onClick={() => setMode('form')}
+              onClick={() => {
+                if (mediaRecorderRef.current) {
+                  mediaRecorderRef.current.onstop = null;
+                  if (mediaRecorderRef.current.state !== 'inactive') {
+                    mediaRecorderRef.current.stop();
+                  }
+                }
+                setMode('form');
+                setIsListening(false);
+              }}
               className="absolute right-5 top-5 text-slate-400 hover:text-white transition-colors"
             >
               <X size={20} />
@@ -463,7 +497,33 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
             </div>
 
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 min-h-[60px] flex items-center justify-center text-sm font-medium text-slate-300 italic">
-              "{speechText}"
+              {speechText}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (mediaRecorderRef.current) {
+                    mediaRecorderRef.current.onstop = null;
+                    if (mediaRecorderRef.current.state !== 'inactive') {
+                      mediaRecorderRef.current.stop();
+                    }
+                  }
+                  setMode('form');
+                  setIsListening(false);
+                }}
+                className="flex-1 py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 font-bold rounded-2xl transition-all text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={stopVoiceRecording}
+                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-2xl transition-all active:scale-[0.98] text-sm px-6 shadow-lg shadow-emerald-600/20"
+              >
+                Stop & Analyze
+              </button>
             </div>
           </motion.div>
         )}
