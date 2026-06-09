@@ -34,3 +34,5 @@ frontend/build/
 # Large media files
 *.mp4
 
+
+.vercel
