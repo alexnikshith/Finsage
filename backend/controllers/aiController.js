@@ -123,25 +123,27 @@ exports.scanReceipt = async (req, res) => {
     }
 
     // Check configuration variables
-    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      return res.status(400).json({ 
-        message: "Cloudinary configuration is missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your Vercel project settings or local .env file." 
-      });
-    }
-
     if (!process.env.GEMINI_API_KEY) {
       return res.status(400).json({ 
         message: "Gemini API Key is missing. Please set GEMINI_API_KEY in your Vercel project settings or local .env file." 
       });
     }
 
-    // 1. Upload to Cloudinary
-    let uploadResult;
-    try {
-      uploadResult = await uploadToCloudinary(req.file.buffer);
-    } catch (uploadErr) {
-      console.error("Cloudinary Upload Error:", uploadErr.message);
-      return res.status(500).json({ message: "Failed to upload receipt image. Check Cloudinary settings." });
+    // 1. Upload to Cloudinary (optional fallback to base64 Data URI)
+    let receiptImageUrl;
+    const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+    
+    if (isCloudinaryConfigured) {
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer);
+        receiptImageUrl = uploadResult.secure_url;
+      } catch (uploadErr) {
+        console.warn("⚠️ Cloudinary Upload failed, falling back to base64:", uploadErr.message);
+        receiptImageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      }
+    } else {
+      console.info("ℹ️ Cloudinary not configured. Storing receipt image as base64 Data URI.");
+      receiptImageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
 
     // 3. Process with Gemini
@@ -189,7 +191,7 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
 
     res.json({
       success: true,
-      receiptImageUrl: uploadResult.secure_url,
+      receiptImageUrl: receiptImageUrl,
       data: {
         merchant: extractedData.merchant || "Unknown Merchant",
         amount: cleanAmount(extractedData.amount),
