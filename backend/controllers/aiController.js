@@ -40,8 +40,7 @@ function extractJSON(text) {
 const uploadToCloudinary = (buffer) => {
   return new Promise((resolve, reject) => {
     if (!process.env.CLOUDINARY_CLOUD_NAME) {
-      // Return simulated URL if credentials are not configured
-      return resolve({ secure_url: "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?auto=format&fit=crop&w=600&q=80" });
+      return reject(new Error("Cloudinary cloud name is not configured."));
     }
     const stream = cloudinary.uploader.upload_stream(
       { folder: "finsage_receipts" },
@@ -123,34 +122,26 @@ exports.scanReceipt = async (req, res) => {
       return res.status(400).json({ message: "No receipt image uploaded." });
     }
 
+    // Check configuration variables
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(400).json({ 
+        message: "Cloudinary configuration is missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your Vercel project settings or local .env file." 
+      });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(400).json({ 
+        message: "Gemini API Key is missing. Please set GEMINI_API_KEY in your Vercel project settings or local .env file." 
+      });
+    }
+
     // 1. Upload to Cloudinary
     let uploadResult;
     try {
       uploadResult = await uploadToCloudinary(req.file.buffer);
     } catch (uploadErr) {
       console.error("Cloudinary Upload Error:", uploadErr.message);
-      return res.status(500).json({ message: "Failed to upload receipt image." });
-    }
-
-    // 2. Check if Gemini API key is missing
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn("⚠️ GEMINI_API_KEY missing. Simulating OCR extraction.");
-      return res.json({
-        success: true,
-        receiptImageUrl: uploadResult.secure_url,
-        data: {
-          merchant: "Domino's Pizza",
-          amount: 525,
-          date: new Date().toISOString().split('T')[0],
-          category: "food",
-          confidence: 0.95,
-          items: [
-            { name: "Pizza", price: 450 },
-            { name: "Coke", price: 50 },
-            { name: "Tax", price: 25 }
-          ]
-        }
-      });
+      return res.status(500).json({ message: "Failed to upload receipt image. Check Cloudinary settings." });
     }
 
     // 3. Process with Gemini
@@ -226,16 +217,8 @@ exports.processVoice = async (req, res) => {
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      console.warn("⚠️ GEMINI_API_KEY missing. Simulating voice parsing.");
-      return res.json({
-        success: true,
-        data: {
-          merchant: text.toLowerCase().includes("petrol") ? "Petrol Station" : null,
-          amount: Number((text.match(/\d+/) || [0])[0]) || 450,
-          date: new Date().toISOString().split('T')[0],
-          category: text.toLowerCase().includes("groceries") ? "groceries" : text.toLowerCase().includes("petrol") ? "transport" : "other",
-          confidence: 0.9
-        }
+      return res.status(400).json({ 
+        message: "Gemini API Key is missing. Please set GEMINI_API_KEY in your Vercel project settings or local .env file." 
       });
     }
 
@@ -302,16 +285,8 @@ exports.processVoiceFile = async (req, res) => {
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      console.warn("⚠️ GEMINI_API_KEY missing. Simulating audio voice parsing.");
-      return res.json({
-        success: true,
-        data: {
-          merchant: "Petrol Station",
-          amount: 1200,
-          date: new Date().toISOString().split('T')[0],
-          category: "transport",
-          confidence: 0.95
-        }
+      return res.status(400).json({ 
+        message: "Gemini API Key is missing. Please set GEMINI_API_KEY in your Vercel project settings or local .env file." 
       });
     }
 
