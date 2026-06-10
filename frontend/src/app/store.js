@@ -1,5 +1,5 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import financeReducer from '../features/finance/financeSlice';
+import financeReducer, { sanitizeFinance } from '../features/finance/financeSlice';
 import authReducer from '../features/auth/authSlice';
 import api from '../services/api';
 
@@ -96,7 +96,10 @@ const loadState = () => {
       if (serializedState === null) return undefined;
       const parsed = JSON.parse(serializedState);
       if (!parsed.auth || !parsed.finance) return undefined;
-      return parsed;
+      return {
+        auth: parsed.auth,
+        finance: sanitizeFinance(parsed.finance)
+      };
     }
   } catch (err) {
     return undefined;

@@ -28,6 +28,67 @@ const getInitialState = () => ({
 
 const initialState = getInitialState();
 
+export const sanitizeFinance = (finance) => {
+  const defaultState = getInitialState();
+  if (!finance || typeof finance !== 'object') {
+    return defaultState;
+  }
+
+  const sanitized = { ...defaultState };
+
+  // Enforce type for basic values
+  sanitized.monthlySalary = typeof finance.monthlySalary === 'number' ? finance.monthlySalary : (Number(finance.monthlySalary) || 0);
+  sanitized.isSalarySet = typeof finance.isSalarySet === 'boolean' ? finance.isSalarySet : !!finance.isSalarySet;
+  sanitized.currency = typeof finance.currency === 'string' && finance.currency ? finance.currency : defaultState.currency;
+  sanitized.locale = typeof finance.locale === 'string' && finance.locale ? finance.locale : defaultState.locale;
+
+  const currentMonthNum = Number(finance.currentMonth);
+  sanitized.currentMonth = !isNaN(currentMonthNum) ? currentMonthNum : defaultState.currentMonth;
+
+  const lastResetMonthNum = Number(finance.lastResetMonth);
+  sanitized.lastResetMonth = !isNaN(lastResetMonthNum) ? lastResetMonthNum : defaultState.lastResetMonth;
+
+  // Categories MUST be a non-empty array
+  if (Array.isArray(finance.categories) && finance.categories.length > 0) {
+    sanitized.categories = finance.categories.filter(cat => cat && typeof cat === 'object' && cat.id);
+    if (sanitized.categories.length === 0) {
+      sanitized.categories = defaultState.categories;
+    }
+  } else {
+    sanitized.categories = defaultState.categories;
+  }
+
+  // Transactions
+  if (Array.isArray(finance.transactions)) {
+    sanitized.transactions = finance.transactions.filter(t => t && typeof t === 'object');
+  } else {
+    sanitized.transactions = [];
+  }
+
+  // Borrows
+  if (Array.isArray(finance.borrows)) {
+    sanitized.borrows = finance.borrows.filter(b => b && typeof b === 'object');
+  } else {
+    sanitized.borrows = [];
+  }
+
+  // Notifications
+  if (Array.isArray(finance.notifications)) {
+    sanitized.notifications = finance.notifications.filter(n => n && typeof n === 'object');
+  } else {
+    sanitized.notifications = defaultState.notifications;
+  }
+
+  // Monthly Reports
+  if (Array.isArray(finance.monthlyReports)) {
+    sanitized.monthlyReports = finance.monthlyReports.filter(r => r && typeof r === 'object');
+  } else {
+    sanitized.monthlyReports = [];
+  }
+
+  return sanitized;
+};
+
 const financeSlice = createSlice({
   name: 'finance',
   initialState,
@@ -75,13 +136,14 @@ const financeSlice = createSlice({
       const remoteFinance = action.payload;
       if (!remoteFinance) return state;
 
-      const remoteTx = (remoteFinance.transactions || []).map(t => ({ ...t, synced: true }));
-      const localTx = state.transactions || [];
+      const sanitizedRemote = sanitizeFinance(remoteFinance);
+      const remoteTx = sanitizedRemote.transactions.map(t => ({ ...t, synced: true }));
+      const localTx = Array.isArray(state.transactions) ? state.transactions : [];
       const unsyncedLocalTx = localTx.filter(lt => !lt.synced && !remoteTx.some(rt => rt.id === lt.id));
       const mergedTransactions = [...remoteTx, ...unsyncedLocalTx];
 
       return {
-        ...remoteFinance,
+        ...sanitizedRemote,
         transactions: mergedTransactions
       };
     },
@@ -200,10 +262,10 @@ const financeSlice = createSlice({
       if (action.payload && action.payload.savedFinance) {
         console.log("⚛️ Atomic Hydration: Using data from action payload");
         const finance = action.payload.savedFinance;
-        return {
+        return sanitizeFinance({
           ...finance,
           transactions: (finance.transactions || []).map(t => ({ ...t, synced: true }))
-        };
+        });
       }
 
       // Priority 2: Fallback to localStorage if payload didn't have it
@@ -215,10 +277,10 @@ const financeSlice = createSlice({
           if (parsed.finance) {
             console.log("💾 Fallback Hydration: Using data from localStorage");
             const finance = parsed.finance;
-            return {
+            return sanitizeFinance({
               ...finance,
               transactions: (finance.transactions || []).map(t => ({ ...t, synced: true }))
-            };
+            });
           }
         }
       } catch (err) {
