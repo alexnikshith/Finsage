@@ -80,11 +80,11 @@ const filterTxsByRange = (txs, range) => {
   let cutOffDate = new Date(startOfDay);
 
   if (range === '7days') {
-    cutOffDate.setDate(startOfDay.getDate() - 6);
+    cutOffDate.setDate(startOfDay.getDate() - 7);
   } else if (range === '30days') {
-    cutOffDate.setDate(startOfDay.getDate() - 29);
+    cutOffDate.setDate(startOfDay.getDate() - 30);
   } else if (range === '90days') {
-    cutOffDate.setDate(startOfDay.getDate() - 89);
+    cutOffDate.setDate(startOfDay.getDate() - 90);
   } else {
     return txs;
   }
@@ -204,7 +204,7 @@ const Analytics = () => {
 
   // 3. Process Cumulative Trend Line Data
   const trendData = useMemo(() => {
-    const daysLimit = range === '7days' ? 7 : range === '30days' ? 30 : range === '90days' ? 90 : 365;
+    const daysLimit = range === '7days' ? 8 : range === '30days' ? 31 : range === '90days' ? 91 : 366;
     const data = [];
     const now = new Date();
     
