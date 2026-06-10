@@ -55,7 +55,8 @@ const financeSlice = createSlice({
         source: source || 'manual',
         merchant: merchant || '',
         confidenceScore: confidenceScore !== undefined ? confidenceScore : 1.0,
-        receiptImageUrl: receiptImageUrl || ''
+        receiptImageUrl: receiptImageUrl || '',
+        synced: false
       };
 
       state.transactions.push(newTransaction);
@@ -71,7 +72,25 @@ const financeSlice = createSlice({
       return getInitialState();
     },
     hydrateFinance: (state, action) => {
-      return action.payload;
+      const remoteFinance = action.payload;
+      if (!remoteFinance) return state;
+
+      const remoteTx = (remoteFinance.transactions || []).map(t => ({ ...t, synced: true }));
+      const localTx = state.transactions || [];
+      const unsyncedLocalTx = localTx.filter(lt => !lt.synced && !remoteTx.some(rt => rt.id === lt.id));
+      const mergedTransactions = [...remoteTx, ...unsyncedLocalTx];
+
+      return {
+        ...remoteFinance,
+        transactions: mergedTransactions
+      };
+    },
+    markTransactionsSynced: (state) => {
+      if (Array.isArray(state.transactions)) {
+        state.transactions.forEach(t => {
+          t.synced = true;
+        });
+      }
     },
     updateCurrency: (state, action) => {
       state.currency = action.payload.currency;
@@ -102,7 +121,8 @@ const financeSlice = createSlice({
         description: `Borrowed from ${source}`,
         category: 'other',
         type: 'income',
-        date: newBorrow.date
+        date: newBorrow.date,
+        synced: false
       });
     },
     repayBorrow: (state, action) => {
@@ -128,7 +148,8 @@ const financeSlice = createSlice({
           description: `Repayment to ${borrow.source}`,
           category: 'other',
           type: 'expense',
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
+          synced: false
         });
       }
     },
@@ -178,7 +199,11 @@ const financeSlice = createSlice({
       // Priority 1: Data passed directly in the action payload (Atomic)
       if (action.payload && action.payload.savedFinance) {
         console.log("⚛️ Atomic Hydration: Using data from action payload");
-        return action.payload.savedFinance;
+        const finance = action.payload.savedFinance;
+        return {
+          ...finance,
+          transactions: (finance.transactions || []).map(t => ({ ...t, synced: true }))
+        };
       }
 
       // Priority 2: Fallback to localStorage if payload didn't have it
@@ -189,7 +214,11 @@ const financeSlice = createSlice({
           const parsed = JSON.parse(savedData);
           if (parsed.finance) {
             console.log("💾 Fallback Hydration: Using data from localStorage");
-            return parsed.finance;
+            const finance = parsed.finance;
+            return {
+              ...finance,
+              transactions: (finance.transactions || []).map(t => ({ ...t, synced: true }))
+            };
           }
         }
       } catch (err) {
@@ -212,6 +241,7 @@ export const {
   resetFinance, 
   hardResetFinance,
   hydrateFinance,
+  markTransactionsSynced,
   updateCurrency,
   addBorrow,
   repayBorrow,

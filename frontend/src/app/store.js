@@ -32,7 +32,7 @@ const persistenceMiddleware = store => next => action => {
   // 🚨 CRITICAL FIX: Do not save during the login action itself!
   // The login action wipes the state (Nuclear Reset). If we save here, 
   // we accidentally overwrite the user's real saved data with an empty state!
-  if (action.type !== 'auth/loginSuccess' && action.type !== 'auth/logout') {
+  if (action.type !== 'auth/loginSuccess' && action.type !== 'auth/logout' && action.type !== 'finance/markTransactionsSynced') {
     if (state.auth.isAuthenticated && state.auth.user?.email) {
       const userData = {
         finance: state.finance,
@@ -54,6 +54,7 @@ const persistenceMiddleware = store => next => action => {
           .then(() => {
             console.log("☁️ Cloud Sync Successful (instant)");
             setSyncing(false);
+            store.dispatch({ type: 'finance/markTransactionsSynced' });
           })
           .catch(() => {
             console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
@@ -67,6 +68,7 @@ const persistenceMiddleware = store => next => action => {
               setSyncing(true);
               await api.post('/sync/push', { finance: state.finance });
               console.log("☁️ Cloud Sync Successful");
+              store.dispatch({ type: 'finance/markTransactionsSynced' });
           } catch (e) {
               console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
           } finally {
