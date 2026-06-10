@@ -147,13 +147,15 @@ exports.scanReceipt = async (req, res) => {
     }
 
     // 3. Process with Gemini
+    const refDate = req.body.clientDate || new Date().toISOString().split('T')[0];
     const imagePart = fileToGenerativePart(req.file.buffer, req.file.mimetype);
     const prompt = `Analyze this receipt image. Perform OCR to read it, then extract the following details in JSON format.
+Reference today's date (date of scanning) is ${refDate}.
 You must return only a valid JSON object matching this schema, without any markdown formatting:
 {
   "merchant": "Name of the merchant/store (string)",
   "amount": total final grand total paid (number, e.g. 525.00 - ignore subtotal/tax breakdowns, look for the final net payment amount after any discounts/taxes)",
-  "date": "Date of transaction in YYYY-MM-DD format (string, or null if not found/unclear)",
+  "date": "Date of transaction in YYYY-MM-DD format (string, or null if not found/unclear. If the date is missing, not visible, or unclear on the receipt, return null)",
   "category": "one of: food, groceries, transport, shopping, bills, entertainment, health, education, other",
   "confidence": confidence score between 0.0 and 1.0 based on readability and categorization certainty (number)",
   "items": [
@@ -195,7 +197,7 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
       data: {
         merchant: extractedData.merchant || "Unknown Merchant",
         amount: cleanAmount(extractedData.amount),
-        date: extractedData.date || new Date().toISOString().split('T')[0],
+        date: extractedData.date || refDate,
         category: normalizeCategory(extractedData.category),
         confidence: Number(extractedData.confidence) || 0.7,
         items: extractedData.items || []
@@ -213,7 +215,7 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
  */
 exports.processVoice = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, clientDate } = req.body;
     if (!text || text.trim() === '') {
       return res.status(400).json({ message: "Voice text transcription is required." });
     }
@@ -224,13 +226,14 @@ exports.processVoice = async (req, res) => {
       });
     }
 
+    const refDate = clientDate || new Date().toISOString().split('T')[0];
     const prompt = `Analyze this spoken text describing an expense transaction: "${text}"
 Extract the details and return them in JSON format.
 You must return only a valid JSON object matching this schema, without any markdown formatting:
 {
   "merchant": "Name of the merchant/store if explicitly mentioned (string, or null if not mentioned)",
   "amount": total final grand total amount paid (number, e.g., 1200 or 450 - extract digits only)",
-  "date": "Date of transaction in YYYY-MM-DD format (string, use today's date ${new Date().toISOString().split('T')[0]} if relative words like 'today', 'just now' are used; calculate relative date if 'yesterday' or days of the week are mentioned, otherwise null)",
+  "date": "Date of transaction in YYYY-MM-DD format (string, use today's date ${refDate} if relative words like 'today', 'just now' are used; calculate relative date if 'yesterday' or days of the week are mentioned, otherwise null)",
   "category": "one of: food, groceries, transport, shopping, bills, entertainment, health, education, other",
   "confidence": confidence score between 0.0 and 1.0 based on clarity and categorization certainty (number)"
 }
@@ -265,7 +268,7 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
       data: {
         merchant: extractedData.merchant || null,
         amount: cleanAmount(extractedData.amount),
-        date: extractedData.date || new Date().toISOString().split('T')[0],
+        date: extractedData.date || refDate,
         category: normalizeCategory(extractedData.category),
         confidence: Number(extractedData.confidence) || 0.7
       }
@@ -292,6 +295,7 @@ exports.processVoiceFile = async (req, res) => {
       });
     }
 
+    const refDate = req.body.clientDate || new Date().toISOString().split('T')[0];
     // Process with Gemini 1.5 Flash
     const audioPart = fileToGenerativePart(req.file.buffer, req.file.mimetype);
     const prompt = `Listen to this audio recording describing an expense transaction.
@@ -300,7 +304,7 @@ You must return only a valid JSON object matching this schema, without any markd
 {
   "merchant": "Name of the merchant/store if explicitly mentioned (string, or null if not mentioned)",
   "amount": total final grand total amount paid (number, e.g., 1200 or 450 - extract digits only)",
-  "date": "Date of transaction in YYYY-MM-DD format (string, use today's date ${new Date().toISOString().split('T')[0]} if relative words like 'today', 'just now' are used; calculate relative date if 'yesterday' or days of the week are mentioned, otherwise null)",
+  "date": "Date of transaction in YYYY-MM-DD format (string, use today's date ${refDate} if relative words like 'today', 'just now' are used; calculate relative date if 'yesterday' or days of the week are mentioned, otherwise null)",
   "category": "one of: food, groceries, transport, shopping, bills, entertainment, health, education, other",
   "confidence": confidence score between 0.0 and 1.0 based on clarity and categorization certainty (number)"
 }
@@ -335,7 +339,7 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
       data: {
         merchant: extractedData.merchant || null,
         amount: cleanAmount(extractedData.amount),
-        date: extractedData.date || new Date().toISOString().split('T')[0],
+        date: extractedData.date || refDate,
         category: normalizeCategory(extractedData.category),
         confidence: Number(extractedData.confidence) || 0.7
       }

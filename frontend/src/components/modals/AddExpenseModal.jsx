@@ -9,6 +9,14 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
   const categories = useSelector(state => state.finance.categories);
   const { currency = 'INR', locale = 'en-IN' } = useSelector(state => state.finance);
   const dispatch = useDispatch();
+
+  const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   
   // Standard Form State
   const [amount, setAmount] = useState('');
@@ -28,7 +36,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
     amount: '',
     merchant: '',
     category: 'other',
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(),
     confidence: 1.0,
     source: 'manual',
     imageUrl: ''
@@ -142,6 +150,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
     try {
       const formData = new FormData();
       formData.append('receipt', imageBlob, 'receipt.jpg');
+      formData.append('clientDate', getLocalDateString());
       
       const res = await api.post('/ai/scan-receipt', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -153,7 +162,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
           amount: extracted.amount || '',
           merchant: extracted.merchant || '',
           category: extracted.category || 'other',
-          date: extracted.date || new Date().toISOString().split('T')[0],
+          date: extracted.date || getLocalDateString(),
           confidence: extracted.confidence || 0.8,
           source: 'camera',
           imageUrl: res.data.receiptImageUrl
@@ -225,6 +234,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
     try {
       const formData = new FormData();
       formData.append('voice', audioBlob, 'voice.webm');
+      formData.append('clientDate', getLocalDateString());
       
       const res = await api.post('/ai/process-voice-file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -236,7 +246,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
           amount: extracted.amount || '',
           merchant: extracted.merchant || '',
           category: extracted.category || 'other',
-          date: extracted.date || new Date().toISOString().split('T')[0],
+          date: extracted.date || getLocalDateString(),
           confidence: extracted.confidence || 0.8,
           source: 'voice',
           imageUrl: ''
@@ -263,7 +273,13 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
         description: extractedData.merchant ? `AI transaction at ${extractedData.merchant}` : `AI expense entry`,
         category: extractedData.category,
         type: 'expense',
-        date: new Date(extractedData.date).toISOString(),
+        date: (() => {
+          const [year, month, day] = extractedData.date.split('-').map(Number);
+          const localDate = new Date();
+          localDate.setFullYear(year, month - 1, day);
+          localDate.setHours(12, 0, 0, 0); // local noon to avoid timezone boundary issues
+          return localDate.toISOString();
+        })(),
         source: extractedData.source,
         merchant: extractedData.merchant || '',
         confidenceScore: Number(extractedData.confidence),
