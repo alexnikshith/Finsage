@@ -22,13 +22,15 @@ function App() {
   const { lastResetMonth } = financeState;
   const dispatch = useDispatch();
 
-  // Background Cloud Sync Pull
+  // Background Cloud Sync Pull & Polling
   useEffect(() => {
+    let intervalId = null;
+
     const syncWithCloud = async () => {
       if (isAuthenticated) {
         try {
           const response = await api.get('/sync/pull');
-          if (response.data?.finance && response.data.finance.isSalarySet) {
+          if (response.data?.finance) {
             dispatch(hydrateFinance(response.data.finance));
           }
         } catch (err) {
@@ -36,7 +38,23 @@ function App() {
         }
       }
     };
+
+    // 1. Initial Sync
     syncWithCloud();
+
+    // 2. Sync on Window/Tab Focus
+    const handleFocus = () => {
+      syncWithCloud();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // 3. Periodic Background Sync (every 15 seconds)
+    intervalId = setInterval(syncWithCloud, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [isAuthenticated, dispatch]);
 
   // Self-healing Month Watcher
