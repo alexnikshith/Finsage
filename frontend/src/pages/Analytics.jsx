@@ -317,11 +317,11 @@ const Analytics = () => {
           className="glass-morphism p-6 rounded-3xl border border-white/5 space-y-2"
         >
           <div className="flex items-center gap-2 text-emerald-500">
-            <TrendingUp size={16} />
-            <span className="text-xs font-bold uppercase tracking-wider">Total Inflow</span>
+            <Wallet size={16} />
+            <span className="text-xs font-bold uppercase tracking-wider">Monthly Salary</span>
           </div>
-          <h3 className="text-3xl font-black">{formatCurrency(rangeStats.totalInflow)}</h3>
-          <p className="text-[10px] text-slate-500">Salary + incomes in range</p>
+          <h3 className="text-3xl font-black">{formatCurrency(monthlySalary)}</h3>
+          <p className="text-[10px] text-slate-500">Base monthly budget</p>
         </motion.div>
 
         <motion.div 
