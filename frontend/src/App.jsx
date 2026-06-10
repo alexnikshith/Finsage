@@ -28,6 +28,10 @@ function App() {
 
     const syncWithCloud = async () => {
       if (isAuthenticated) {
+        // Skip pull if there is an active push in progress to prevent overwriting local state
+        if (typeof window !== 'undefined' && window.isFinsageSyncing) {
+          return;
+        }
         try {
           const response = await api.get('/sync/pull');
           if (response.data?.finance) {

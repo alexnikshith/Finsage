@@ -13,7 +13,6 @@ exports.pushState = async (req, res) => {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User find failed' });
 
-        // Atomic update of finance fields
         user.monthlySalary = finance.monthlySalary;
         user.isSalarySet = finance.isSalarySet;
         user.currency = finance.currency;
@@ -24,6 +23,13 @@ exports.pushState = async (req, res) => {
         user.notifications = finance.notifications;
         user.monthlyReports = finance.monthlyReports;
         user.lastResetMonth = finance.lastResetMonth;
+
+        // Force Mongoose to recognize changes in Mixed/Array fields
+        user.markModified('transactions');
+        user.markModified('categories');
+        user.markModified('borrows');
+        user.markModified('notifications');
+        user.markModified('monthlyReports');
 
         await user.save();
         res.json({ success: true, message: 'Cloud sync complete' });

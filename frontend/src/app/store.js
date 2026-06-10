@@ -22,6 +22,12 @@ let syncTimeout = null;
 const persistenceMiddleware = store => next => action => {
   const result = next(action);
   const state = store.getState();
+
+  const setSyncing = (val) => {
+    if (typeof window !== 'undefined') {
+      window.isFinsageSyncing = val;
+    }
+  };
   
   // 🚨 CRITICAL FIX: Do not save during the login action itself!
   // The login action wipes the state (Nuclear Reset). If we save here, 
@@ -43,18 +49,28 @@ const persistenceMiddleware = store => next => action => {
       if (isTransactionChange) {
         // Push immediately so refresh / cross-device sees up-to-date data
         if (syncTimeout) clearTimeout(syncTimeout);
+        setSyncing(true);
         api.post('/sync/push', { finance: state.finance })
-          .then(() => console.log("☁️ Cloud Sync Successful (instant)"))
-          .catch(() => console.warn("☁️ Cloud Sync Pending (Offline or DB Down)"));
+          .then(() => {
+            console.log("☁️ Cloud Sync Successful (instant)");
+            setSyncing(false);
+          })
+          .catch(() => {
+            console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
+            setSyncing(false);
+          });
       } else {
         // Debounce non-critical state changes (salary, currency, etc.)
         if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(async () => {
           try {
+              setSyncing(true);
               await api.post('/sync/push', { finance: state.finance });
               console.log("☁️ Cloud Sync Successful");
           } catch (e) {
               console.warn("☁️ Cloud Sync Pending (Offline or DB Down)");
+          } finally {
+              setSyncing(false);
           }
         }, 2000);
       }
