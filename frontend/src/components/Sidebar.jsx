@@ -12,7 +12,8 @@ import {
   Settings,
   LogOut,
   Bell,
-  Calendar
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectFinanceStats } from '../features/finance/financeSlice';
@@ -75,13 +76,13 @@ const Sidebar = () => {
 
       <div className="flex-1 space-y-2">
         <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/" />
+        <SidebarItem icon={BarChart3} label="Analytics" to="/analytics" />
         <SidebarItem icon={TrendingUp} label="Transactions" to="/transactions" />
         <SidebarItem icon={Target} label="Budgets" to="/budgets" />
         <SidebarItem icon={HandCoins} label="Borrows" to="/borrows" />
         <SidebarItem icon={Bell} label="Notifications" to="/notifications" badge={unreadNotifications} />
         <SidebarItem icon={Calendar} label="Calendar" to="/calendar" />
         <SidebarItem icon={BrainCircuit} label="AI Insights" to="/ai-insights" />
-
       </div>
 
       <div className="pt-6 border-t border-white/5 space-y-2">

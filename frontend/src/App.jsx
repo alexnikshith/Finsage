@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useSelector, useDispatch } from 'react-redux'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
+import Analytics from './pages/Analytics'
 import Transactions from './pages/Transactions'
 import Budgets from './pages/Budgets'
 import Borrows from './pages/Borrows'
@@ -87,6 +88,7 @@ function App() {
                   <div className="flex-1 flex overflow-hidden">
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
+                      <Route path="/analytics" element={<Analytics />} />
                       <Route path="/transactions" element={<Transactions />} />
                       <Route path="/budgets" element={<Budgets />} />
                       <Route path="/borrows" element={<Borrows />} />
