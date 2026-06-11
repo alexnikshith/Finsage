@@ -387,9 +387,12 @@ exports.chatWithCoach = async (req, res) => {
         merchant: t.merchant || undefined
       }));
 
+    const todayDate = new Date().toISOString().split('T')[0];
+
     const systemPrompt = `You are FinSage AI, a precision financial intelligence advisor and coach. Your mission is to help the user optimize their budget, analyze their expenses, guide their savings, and answer questions about their personal finance.
 
 Below is the user's real-time financial profile:
+- Today's Date: ${todayDate}
 - Base Monthly Salary: ${salary} ${currency}
 - Active Currency: ${currency} (Format outputs using locale: ${locale})
 - Total Transactions: ${txs.length} item(s)
@@ -401,8 +404,9 @@ Guidelines:
 1. Provide concise, direct, and actionable financial insights. Avoid generic long explanations unless requested.
 2. Format your responses in clean Markdown (use bolding, lists, and tables when comparing numbers).
 3. If the user asks a question about their transactions, savings rate, or categories, perform the calculation using the context above.
-4. Politely refuse to answer topics that are completely unrelated to personal finance, budgeting, saving, or investing (e.g. general knowledge trivia or coding questions). Keep the discussion strictly focused on financial coaching.
-5. Provide precise figures using their active currency (${currency}) and formatting.`;
+4. When the user asks about 'today', 'this week', 'this month' — filter the transactions by the relevant date range using Today's Date (${todayDate}) before computing totals.
+5. Politely refuse to answer topics that are completely unrelated to personal finance, budgeting, saving, or investing (e.g. general knowledge trivia or coding questions). Keep the discussion strictly focused on financial coaching.
+6. Provide precise figures using their active currency (${currency}) and formatting.`;
 
     // 2. Hydrate the chat contents matching Gemini API requirements
     const formattedContents = [];
@@ -446,41 +450,81 @@ Guidelines:
       // Split into clean words to prevent substring matching bugs (e.g., "this" matching "hi")
       const words = lowerMsg.split(/\s+/).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,""));
       const isGreeting = words.some(w => ['hi', 'hello', 'hey', 'yo', 'greetings', 'hola'].includes(w));
-      
+
+      // Helper: today's ISO date string (YYYY-MM-DD)
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Detect time-scope keywords
+      const asksToday    = lowerMsg.includes('today');
+      const asksThisWeek = lowerMsg.includes('this week') || lowerMsg.includes('week');
+      const asksThisMonth = lowerMsg.includes('this month') || lowerMsg.includes('month');
+
+      // Detect intent keywords
+      const asksSpent    = lowerMsg.includes('spent') || lowerMsg.includes('spend') || lowerMsg.includes('spending') || lowerMsg.includes('expense') || lowerMsg.includes('outflow') || lowerMsg.includes('total amount');
+      const asksIncome   = lowerMsg.includes('income') || lowerMsg.includes('salary') || lowerMsg.includes('earned');
+      const asksBalance  = lowerMsg.includes('balance') || lowerMsg.includes('remaining') || lowerMsg.includes('left') || lowerMsg.includes('saving') || lowerMsg.includes('track');
+      const asksCategory = lowerMsg.includes('category') || lowerMsg.includes('categories') || lowerMsg.includes('breakdown');
+
       if (isGreeting) {
         reply = `Hello! I am your FinSage AI Coach (Offline Backup Mode). \n\nHow can I help you optimize your personal finances today?`;
-      } else if (lowerMsg.includes("spent") || lowerMsg.includes("spending") || lowerMsg.includes("total amount") || lowerMsg.includes("expense") || lowerMsg.includes("outflow")) {
-        const totalExpenses = txs
-          .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-        reply = `Based on your live ledger, your total amount spent (expenses) is **${totalExpenses} ${currency}** across **${txs.filter(t => t.type === 'expense').length}** transactions.\n\nSign in to sync with the cloud and get full AI categorization details!`;
-      } else if (lowerMsg.includes("income") || lowerMsg.includes("salary") || lowerMsg.includes("earned")) {
-        const additionalIncome = txs
-          .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+      } else if (asksSpent && asksToday) {
+        // TODAY'S spending only
+        const todayTxs = txs.filter(t => t.type === 'expense' && t.date && t.date.startsWith(todayStr));
+        const todayTotal = todayTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const txLines = todayTxs.map(t => `- ${t.title || t.merchant || 'Expense'}: **${t.amount} ${currency}** (${t.category || 'other'})`).join('\n');
+        reply = todayTxs.length > 0
+          ? `Here is your spending for **today (${todayStr})**:\n\n${txLines}\n\n**Total spent today: ${todayTotal} ${currency}** across ${todayTxs.length} transaction(s).`
+          : `You have **no expense transactions** recorded for today (${todayStr}).`;
+
+      } else if (asksSpent && asksThisWeek) {
+        // THIS WEEK's spending
+        const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        const weekTxs = txs.filter(t => t.type === 'expense' && t.date && t.date >= weekStartStr);
+        const weekTotal = weekTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        reply = `Your spending this week (from **${weekStartStr}** to **${todayStr}**) is **${weekTotal} ${currency}** across **${weekTxs.length}** transactions.`;
+
+      } else if (asksSpent && asksThisMonth) {
+        // THIS MONTH's spending
+        const monthStr = todayStr.slice(0, 7); // YYYY-MM
+        const monthTxs = txs.filter(t => t.type === 'expense' && t.date && t.date.startsWith(monthStr));
+        const monthTotal = monthTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        reply = `Your spending this month (**${monthStr}**) is **${monthTotal} ${currency}** across **${monthTxs.length}** transactions.`;
+
+      } else if (asksSpent) {
+        // ALL-TIME total spending
+        const allExpenses = txs.filter(t => t.type === 'expense');
+        const totalExpenses = allExpenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        reply = `Your **total spending since you started using FinSage** is **${totalExpenses} ${currency}** across **${allExpenses.length}** expense transactions.`;
+
+      } else if (asksIncome) {
+        const additionalIncome = txs.filter(t => t.type === 'income').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         const totalIncome = Number(salary) + additionalIncome;
-        reply = `Your base monthly salary is set to **${salary} ${currency}**. You have also logged additional income transactions totaling **${additionalIncome} ${currency}**, bringing your total inflow to **${totalIncome} ${currency}**.`;
-      } else if (lowerMsg.includes("balance") || lowerMsg.includes("remaining") || lowerMsg.includes("left") || lowerMsg.includes("saving") || lowerMsg.includes("track")) {
-        const totalExpenses = txs
-          .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-        const additionalIncome = txs
-          .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        reply = `Your base monthly salary is **${salary} ${currency}**. Additional income logged: **${additionalIncome} ${currency}**. Total inflow: **${totalIncome} ${currency}**.`;
+
+      } else if (asksBalance) {
+        const totalExpenses = txs.filter(t => t.type === 'expense').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const additionalIncome = txs.filter(t => t.type === 'income').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         const remaining = Number(salary) + additionalIncome - totalExpenses;
-        reply = `Your calculated remaining balance is **${remaining} ${currency}** (Monthly Salary: ${salary} + Additional Income: ${additionalIncome} - Total Expenses: ${totalExpenses}).`;
-      } else if (lowerMsg.includes("category") || lowerMsg.includes("categories") || lowerMsg.includes("breakdown")) {
+        reply = `Your remaining balance is **${remaining} ${currency}**\n- Monthly Salary: ${salary} ${currency}\n- Extra Income: +${additionalIncome} ${currency}\n- Total Expenses: -${totalExpenses} ${currency}`;
+
+      } else if (asksCategory) {
         const categories = {};
         txs.filter(t => t.type === 'expense').forEach(t => {
           const cat = t.category || 'other';
           categories[cat] = (categories[cat] || 0) + (Number(t.amount) || 0);
         });
         const list = Object.entries(categories)
+          .sort((a, b) => b[1] - a[1])
           .map(([cat, amt]) => `- **${cat.charAt(0).toUpperCase() + cat.slice(1)}**: ${amt} ${currency}`)
           .join('\n');
-        reply = `Here is your category-wise spending breakdown:\n${list || 'No expense transactions logged yet.'}`;
-      } else if (lowerMsg.includes("budget") || lowerMsg.includes("overview")) {
-        reply = `Here is your budget overview (Offline Backup):\n- **Monthly Salary**: ${salary} ${currency}\n- **Recent Transactions**: ${txs.length} item(s) logged.\n\nSign in to get advanced AI analysis!`;
+        reply = `Here is your all-time category-wise spending breakdown:\n${list || 'No expense transactions logged yet.'}`;
+
+      } else if (lowerMsg.includes('budget') || lowerMsg.includes('overview')) {
+        const totalExpenses = txs.filter(t => t.type === 'expense').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        reply = `**Budget Overview:**\n- Monthly Salary: **${salary} ${currency}**\n- Total Expenses (all-time): **${totalExpenses} ${currency}**\n- Total Transactions: **${txs.length}**`;
+
       } else {
         reply = `I am your FinSage AI Coach. (Note: Gemini API is currently rate-limited, so I am answering using my backup rules engine.)\n\nYou asked: "${userMessage}"\n\nTo get full AI coaching insights, please consider signing in!`;
       }
