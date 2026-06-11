@@ -65,6 +65,7 @@ const LandingPage = () => {
     // Start guest session
     dispatch(hardResetFinance());
     dispatch(loginSuccess({ email: 'guest@finsage.local', isGuest: true }));
+    localStorage.setItem('finsage_token', 'guest_token');
     navigate('/');
   };
 

@@ -16,6 +16,11 @@ module.exports = function(req, res, next) {
         req.user = { id: 'dev_user_id', email: 'dev@finsage.com' };
         return next();
     }
+
+    if (token === 'guest_token') {
+        req.user = { id: 'guest_user_id', email: 'guest@finsage.local', isGuest: true };
+        return next();
+    }
     
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
