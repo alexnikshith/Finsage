@@ -92,7 +92,7 @@ const AICoach = () => {
 
     if (isGuest) {
       const currentQueries = Number(sessionStorage.getItem('finsage_guest_queries') || 0);
-      if (currentQueries >= 5) {
+      if (currentQueries >= 3) {
         setShowLimitModal(true);
         return;
       }
@@ -213,7 +213,7 @@ const AICoach = () => {
             {isGuest && (
               <span className="text-[10px] bg-white/5 border border-white/10 px-3 py-1 rounded-full font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1.5 shrink-0 select-none">
                 <Sparkles size={11} className="animate-pulse" />
-                <span>Queries: {queriesCount} / 5</span>
+                <span>Queries: {queriesCount} / 3</span>
               </span>
             )}
           </h2>
@@ -369,7 +369,7 @@ const AICoach = () => {
             <div className="space-y-2">
               <h3 className="text-xl font-bold text-white">Coach Queries Exceeded</h3>
               <p className="text-xs text-slate-400 leading-relaxed px-1">
-                You have reached your limit of 5 free coach queries in trial mode. Sign in for uninterrupted experience to save your transaction history!
+                You have reached your limit of 3 free coach queries in trial mode. Sign in for uninterrupted experience to save your transaction history!
               </p>
             </div>
             <div className="flex flex-col gap-2 pt-2">
