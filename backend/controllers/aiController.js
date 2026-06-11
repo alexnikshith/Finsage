@@ -350,3 +350,89 @@ Return only the raw JSON. Do not write any explanations. Do not include markdown
     res.status(500).json({ message: "Server error during voice audio processing." });
   }
 };
+
+/**
+ * Chat with AI Financial Coach using user's real-time financial context
+ */
+exports.chatWithCoach = async (req, res) => {
+  try {
+    const { messages, finance } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ message: "Messages history array is required." });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(400).json({ 
+        message: "Gemini API Key is missing. Please set GEMINI_API_KEY in your env settings." 
+      });
+    }
+
+    // 1. Construct the finance context payload
+    const salary = finance?.monthlySalary || 0;
+    const currency = finance?.currency || 'INR';
+    const locale = finance?.locale || 'en-IN';
+    const txs = finance?.transactions || [];
+    const borrows = finance?.borrows || [];
+    const monthlyReports = finance?.monthlyReports || [];
+    
+    // Sort and limit transactions context to recent 30 items for model token optimization
+    const recentTxs = [...txs]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 30)
+      .map(t => ({
+        title: t.title,
+        amount: t.amount,
+        type: t.type,
+        category: t.category,
+        date: t.date,
+        merchant: t.merchant || undefined
+      }));
+
+    const systemPrompt = `You are FinSage AI, a precision financial intelligence advisor and coach. Your mission is to help the user optimize their budget, analyze their expenses, guide their savings, and answer questions about their personal finance.
+
+Below is the user's real-time financial profile:
+- Base Monthly Salary: ${salary} ${currency}
+- Active Currency: ${currency} (Format outputs using locale: ${locale})
+- Total Transactions: ${txs.length} item(s)
+- Recent 30 Transactions: ${JSON.stringify(recentTxs)}
+- Debts / Borrows: ${JSON.stringify(borrows.map(b => ({ source: b.source, amount: b.amount, remainingAmount: b.remainingAmount, status: b.status })))}
+- Past Monthly Performance Reports: ${JSON.stringify(monthlyReports.map(r => ({ month: r.month, year: r.year, spent: r.spent, earned: r.earned, savings: r.savings })))}
+
+Guidelines:
+1. Provide concise, direct, and actionable financial insights. Avoid generic long explanations unless requested.
+2. Format your responses in clean Markdown (use bolding, lists, and tables when comparing numbers).
+3. If the user asks a question about their transactions, savings rate, or categories, perform the calculation using the context above.
+4. Politely refuse to answer topics that are completely unrelated to personal finance, budgeting, saving, or investing (e.g. general knowledge trivia or coding questions). Keep the discussion strictly focused on financial coaching.
+5. Provide precise figures using their active currency (${currency}) and formatting.`;
+
+    // 2. Hydrate the chat contents matching Gemini API requirements
+    const formattedContents = [];
+    
+    messages.forEach(msg => {
+      const role = msg.role === 'user' ? 'user' : 'model';
+      formattedContents.push({
+        role,
+        parts: [{ text: msg.content }]
+      });
+    });
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash-lite",
+      systemInstruction: systemPrompt
+    });
+
+    const result = await model.generateContent({
+      contents: formattedContents
+    });
+
+    const reply = result.response.text();
+    res.json({
+      success: true,
+      reply
+    });
+
+  } catch (err) {
+    console.error("AI Financial Coach Controller Error:", err.message);
+    res.status(500).json({ message: "Server error during coach chat generation." });
+  }
+};

@@ -76,5 +76,10 @@ router.post('/process-voice-file', auth, (req, res, next) => {
   });
 }, aiController.processVoiceFile);
 
+// @route   POST api/ai/chat
+// @desc    Chat with the AI Financial Coach
+// @access  Private
+router.post('/chat', auth, aiController.chatWithCoach);
+
 module.exports = router;
 
