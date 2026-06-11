@@ -444,16 +444,46 @@ Guidelines:
       const lowerMsg = userMessage.toLowerCase();
       let reply = "";
       
-      if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey")) {
+      // Split into clean words to prevent substring matching bugs (e.g., "this" matching "hi")
+      const words = lowerMsg.split(/\s+/).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,""));
+      const isGreeting = words.some(w => ['hi', 'hello', 'hey', 'yo', 'greetings', 'hola'].includes(w));
+      
+      if (isGreeting) {
         reply = `Hello! I am your FinSage AI Coach (Offline Backup Mode). \n\nHow can I help you optimize your personal finances today?`;
+      } else if (lowerMsg.includes("spent") || lowerMsg.includes("spending") || lowerMsg.includes("total amount") || lowerMsg.includes("expense") || lowerMsg.includes("outflow")) {
+        const totalExpenses = txs
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        reply = `Based on your live ledger, your total amount spent (expenses) is **${totalExpenses} ${currency}** across **${txs.filter(t => t.type === 'expense').length}** transactions.\n\nSign in to sync with the cloud and get full AI categorization details!`;
+      } else if (lowerMsg.includes("income") || lowerMsg.includes("salary") || lowerMsg.includes("earned")) {
+        const additionalIncome = txs
+          .filter(t => t.type === 'income')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const totalIncome = Number(salary) + additionalIncome;
+        reply = `Your base monthly salary is set to **${salary} ${currency}**. You have also logged additional income transactions totaling **${additionalIncome} ${currency}**, bringing your total inflow to **${totalIncome} ${currency}**.`;
+      } else if (lowerMsg.includes("balance") || lowerMsg.includes("remaining") || lowerMsg.includes("left") || lowerMsg.includes("saving") || lowerMsg.includes("track")) {
+        const totalExpenses = txs
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const additionalIncome = txs
+          .filter(t => t.type === 'income')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const remaining = Number(salary) + additionalIncome - totalExpenses;
+        reply = `Your calculated remaining balance is **${remaining} ${currency}** (Monthly Salary: ${salary} + Additional Income: ${additionalIncome} - Total Expenses: ${totalExpenses}).`;
+      } else if (lowerMsg.includes("category") || lowerMsg.includes("categories") || lowerMsg.includes("breakdown")) {
+        const categories = {};
+        txs.filter(t => t.type === 'expense').forEach(t => {
+          const cat = t.category || 'other';
+          categories[cat] = (categories[cat] || 0) + (Number(t.amount) || 0);
+        });
+        const list = Object.entries(categories)
+          .map(([cat, amt]) => `- **${cat.charAt(0).toUpperCase() + cat.slice(1)}**: ${amt} ${currency}`)
+          .join('\n');
+        reply = `Here is your category-wise spending breakdown:\n${list || 'No expense transactions logged yet.'}`;
       } else if (lowerMsg.includes("budget") || lowerMsg.includes("overview")) {
         reply = `Here is your budget overview (Offline Backup):\n- **Monthly Salary**: ${salary} ${currency}\n- **Recent Transactions**: ${txs.length} item(s) logged.\n\nSign in to get advanced AI analysis!`;
-      } else if (lowerMsg.includes("spending") || lowerMsg.includes("expense") || lowerMsg.includes("category")) {
-        reply = `Looking at your recent spending:\n- You have **${txs.length}** transactions.\n- Your monthly salary is set to **${salary} ${currency}**.\n\nPlease log in to visualize deep spending breakdowns!`;
-      } else if (lowerMsg.includes("saving") || lowerMsg.includes("track")) {
-        reply = `To analyze your savings rate and keep track of your goals over time, we recommend signing in to set up a permanent cloud-synchronized budget.`;
       } else {
-        reply = `I am your FinSage AI Coach. (Note: Gemini API is currently offline or rate-limited, so I am answering using my backup rules engine.)\n\nYou asked: "${userMessage}"\n\nTo get full AI coaching insights, please consider signing in!`;
+        reply = `I am your FinSage AI Coach. (Note: Gemini API is currently rate-limited, so I am answering using my backup rules engine.)\n\nYou asked: "${userMessage}"\n\nTo get full AI coaching insights, please consider signing in!`;
       }
       
       return res.json({

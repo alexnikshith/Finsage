@@ -66,6 +66,13 @@ const LandingPage = () => {
     dispatch(hardResetFinance());
     dispatch(loginSuccess({ email: 'guest@finsage.local', isGuest: true }));
     localStorage.setItem('finsage_token', 'guest_token');
+    
+    // Clear legacy guest query count and chats when starting a fresh trial session
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('finsage_guest_queries');
+      sessionStorage.removeItem('finsage_chat_guest');
+    }
+    
     navigate('/');
   };
 
