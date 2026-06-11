@@ -25,11 +25,16 @@ const AICoach = () => {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [queriesCount, setQueriesCount] = useState(Number(sessionStorage.getItem('finsage_guest_queries') || 0));
 
-  // Initialize and persist chat history using localStorage
+  // Initialize and persist chat history using sessionStorage for guests and localStorage for real users
   const getSavedMessages = () => {
     try {
-      if (email) {
+      if (email && !isGuest) {
         const saved = localStorage.getItem(`finsage_chat_${email}`);
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } else if (isGuest) {
+        const saved = sessionStorage.getItem('finsage_chat_guest');
         if (saved) {
           return JSON.parse(saved);
         }
@@ -54,10 +59,12 @@ const AICoach = () => {
 
   // Sync state with storage when messages change
   useEffect(() => {
-    if (email) {
+    if (email && !isGuest) {
       localStorage.setItem(`finsage_chat_${email}`, JSON.stringify(messages));
+    } else if (isGuest) {
+      sessionStorage.setItem('finsage_chat_guest', JSON.stringify(messages));
     }
-  }, [messages, email]);
+  }, [messages, email, isGuest]);
 
   const formatCurrency = (val) => {
     try {
@@ -140,8 +147,10 @@ const AICoach = () => {
       }
     ];
     setMessages(resetMsg);
-    if (email) {
+    if (email && !isGuest) {
       localStorage.removeItem(`finsage_chat_${email}`);
+    } else if (isGuest) {
+      sessionStorage.removeItem('finsage_chat_guest');
     }
     setShowClearConfirm(false);
   };

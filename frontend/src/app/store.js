@@ -82,6 +82,11 @@ const persistenceMiddleware = store => next => action => {
   if (action.type === 'auth/logout') {
     localStorage.removeItem('finsage_last_user');
     localStorage.removeItem('finsage_token');
+    localStorage.removeItem('finsage_chat_guest@finsage.local');
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('finsage_chat_guest');
+      sessionStorage.removeItem('finsage_guest_queries');
+    }
     if (syncTimeout) clearTimeout(syncTimeout);
   }
   
