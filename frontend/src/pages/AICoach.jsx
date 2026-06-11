@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { selectFinanceStats } from '../features/finance/financeSlice';
 import { 
   Send,
   Bot,
   Sparkles,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  Lock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
@@ -16,6 +18,12 @@ const AICoach = () => {
   const transactions = useSelector(state => state.finance.transactions) || [];
   const finance = useSelector(state => state.finance) || {};
   const email = useSelector(state => state.auth.user?.email);
+  const auth = useSelector(state => state.auth) || {};
+  const isGuest = auth.user?.isGuest;
+  
+  const navigate = useNavigate();
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [queriesCount, setQueriesCount] = useState(Number(sessionStorage.getItem('finsage_guest_queries') || 0));
 
   // Initialize and persist chat history using localStorage
   const getSavedMessages = () => {
@@ -75,6 +83,14 @@ const AICoach = () => {
     const text = textToSend || input;
     if (!text || text.trim() === '') return;
 
+    if (isGuest) {
+      const currentQueries = Number(sessionStorage.getItem('finsage_guest_queries') || 0);
+      if (currentQueries >= 5) {
+        setShowLimitModal(true);
+        return;
+      }
+    }
+
     if (!textToSend) {
       setInput('');
     }
@@ -96,6 +112,12 @@ const AICoach = () => {
           role: 'model', 
           content: response.data.reply 
         }]);
+
+        if (isGuest) {
+          const nextCount = Number(sessionStorage.getItem('finsage_guest_queries') || 0) + 1;
+          sessionStorage.setItem('finsage_guest_queries', String(nextCount));
+          setQueriesCount(nextCount);
+        }
       }
     } catch (err) {
       console.error("AI Coach Chat Error:", err);
@@ -178,7 +200,13 @@ const AICoach = () => {
         <div>
           <h2 className="text-3xl font-bold flex items-center gap-3">
             <MessageSquare className="text-white" size={32} />
-            AI Financial Coach
+            <span>AI Financial Coach</span>
+            {isGuest && (
+              <span className="text-[10px] bg-white/5 border border-white/10 px-3 py-1 rounded-full font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1.5 shrink-0 select-none">
+                <Sparkles size={11} className="animate-pulse" />
+                <span>Queries: {queriesCount} / 5</span>
+              </span>
+            )}
           </h2>
           <p className="text-slate-400">Contextual financial intelligence chatbot powered by your live ledger.</p>
         </div>
@@ -312,6 +340,44 @@ const AICoach = () => {
                 className="px-5 py-3 rounded-xl bg-white hover:bg-slate-200 text-black text-sm font-bold transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
               >
                 Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Queries Limit Exceeded Modal */}
+      {showLimitModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-morphism p-8 rounded-[2.5rem] border border-white/10 max-w-sm w-full space-y-6 text-center shadow-2xl"
+          >
+            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mx-auto text-amber-500">
+              <Lock size={20} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white">Coach Queries Exceeded</h3>
+              <p className="text-xs text-slate-400 leading-relaxed px-1">
+                You have reached your limit of 5 free coach queries in trial mode. Sign in for uninterrupted experience to save your transaction history!
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowLimitModal(false);
+                  navigate('/login');
+                }}
+                className="w-full py-3.5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              >
+                Log In & Save Data
+              </button>
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="w-full py-2.5 rounded-xl text-slate-500 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                Cancel
               </button>
             </div>
           </motion.div>

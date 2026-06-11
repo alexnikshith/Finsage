@@ -433,6 +433,36 @@ Guidelines:
 
   } catch (err) {
     console.error("AI Financial Coach Controller Error:", err.message);
-    res.status(500).json({ message: "Server error during coach chat generation." });
+    
+    // Robust Fallback Mock Responses when Gemini API fails (e.g. Quota Exceeded 429)
+    try {
+      const { messages = [], finance = {} } = req.body;
+      const salary = finance.monthlySalary || 0;
+      const currency = finance.currency || 'INR';
+      const txs = finance.transactions || [];
+      const userMessage = messages[messages.length - 1]?.content || "";
+      const lowerMsg = userMessage.toLowerCase();
+      let reply = "";
+      
+      if (lowerMsg.includes("hello") || lowerMsg.includes("hi") || lowerMsg.includes("hey")) {
+        reply = `Hello! I am your FinSage AI Coach (Offline Backup Mode). \n\nHow can I help you optimize your personal finances today?`;
+      } else if (lowerMsg.includes("budget") || lowerMsg.includes("overview")) {
+        reply = `Here is your budget overview (Offline Backup):\n- **Monthly Salary**: ${salary} ${currency}\n- **Recent Transactions**: ${txs.length} item(s) logged.\n\nSign in to get advanced AI analysis!`;
+      } else if (lowerMsg.includes("spending") || lowerMsg.includes("expense") || lowerMsg.includes("category")) {
+        reply = `Looking at your recent spending:\n- You have **${txs.length}** transactions.\n- Your monthly salary is set to **${salary} ${currency}**.\n\nPlease log in to visualize deep spending breakdowns!`;
+      } else if (lowerMsg.includes("saving") || lowerMsg.includes("track")) {
+        reply = `To analyze your savings rate and keep track of your goals over time, we recommend signing in to set up a permanent cloud-synchronized budget.`;
+      } else {
+        reply = `I am your FinSage AI Coach. (Note: Gemini API is currently offline or rate-limited, so I am answering using my backup rules engine.)\n\nYou asked: "${userMessage}"\n\nTo get full AI coaching insights, please consider signing in!`;
+      }
+      
+      return res.json({
+        success: true,
+        reply
+      });
+    } catch (fallbackErr) {
+      console.error("AI Coach Fallback Error:", fallbackErr.message);
+      return res.status(500).json({ message: "Server error during coach chat generation." });
+    }
   }
 };
