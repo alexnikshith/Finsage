@@ -7,8 +7,8 @@ const getBaseURL = () => {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:5000/api';
     }
-    // Vercel relative path as defined in vercel.json
-    return '/_backend/api';
+    // Production: Vercel rewrites /api/* → backend serverless function
+    return '/api';
   }
   return 'http://localhost:5000/api';
 };
