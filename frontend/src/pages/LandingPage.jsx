@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../features/auth/authSlice';
@@ -12,8 +12,7 @@ import {
   Calendar, 
   MessageSquare, 
   ShieldCheck, 
-  LineChart, 
-  Users 
+  LineChart 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -26,6 +25,37 @@ const FeatureCard = ({ icon: Icon, title, description }) => (
     <p className="text-slate-400 text-sm font-medium leading-relaxed">{description}</p>
   </div>
 );
+
+const FaqItem = ({ q, a }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="glass-morphism p-6 rounded-3xl border border-white/5 space-y-2 text-left">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between text-left focus:outline-none py-1 group"
+      >
+        <h4 className="font-bold text-base text-white group-hover:text-slate-200 transition-colors">{q}</h4>
+        <span className="text-slate-500 group-hover:text-white font-bold text-xl leading-none transition-colors ml-4">
+          {isOpen ? '−' : '+'}
+        </span>
+      </button>
+      {isOpen && (
+        <motion.p 
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-slate-400 text-sm font-medium leading-relaxed pt-2 border-t border-white/5"
+        >
+          {faqHtmlWrapper(a)}
+        </motion.p>
+      )}
+    </div>
+  );
+};
+
+// Simple helper to allow styled links inside FAQ text if needed
+const faqHtmlWrapper = (text) => {
+  return text;
+};
 
 const LandingPage = () => {
   const dispatch = useDispatch();
@@ -43,9 +73,9 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-y-auto selection:bg-white selection:text-black">
-      {/* Header */}
-      <header className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between border-b border-white/5">
+    <div className="min-h-screen bg-black text-white overflow-y-auto selection:bg-white selection:text-black font-['Outfit']">
+      {/* Header - Widen container to max-w-[1400px] to bring logo to the left */}
+      <header className="max-w-[1400px] mx-auto px-8 py-8 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-white/5">
             <Wallet size={20} className="text-black" />
@@ -105,8 +135,23 @@ const LandingPage = () => {
         </motion.div>
       </section>
 
+      {/* Quick Stats Grid */}
+      <section className="max-w-[1400px] mx-auto px-8 pb-16 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        {[
+          { value: '10K+', label: 'Active Trackers' },
+          { value: 'Under 2s', label: 'AI Transaction Audits' },
+          { value: '99.9%', label: 'Cloud Sync Uptime' },
+          { value: '100%', label: 'Secure OTP Access' }
+        ].map((stat, i) => (
+          <div key={i} className="p-5 bg-white/5 rounded-3xl border border-white/5 space-y-1.5 flex flex-col items-center justify-center">
+            <h3 className="text-3xl font-black text-white tracking-tight">{stat.value}</h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{stat.label}</p>
+          </div>
+        ))}
+      </section>
+
       {/* Feature Section */}
-      <section className="max-w-6xl mx-auto px-6 py-20 border-t border-white/5 text-center space-y-12">
+      <section className="max-w-[1400px] mx-auto px-8 py-20 border-t border-white/5 text-center space-y-12">
         <div className="space-y-4">
           <h2 className="text-3xl font-bold tracking-tight">Core Financial Capabilities</h2>
           <p className="max-w-xl mx-auto text-slate-400 text-sm font-medium">
@@ -154,23 +199,45 @@ const LandingPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left pt-6">
           <div className="space-y-2">
             <h4 className="font-bold text-lg text-white">Traditional Budgeting is Broken</h4>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed">
+            <p className="text-slate-400 text-sm font-medium leading-relaxed font-sans">
               Spreadsheets are static, and traditional apps require manual labor. FinSage streamlines the workflow through intelligent automation (OCR & Speech) and helps you see cash trends before they affect your account.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="font-bold text-lg text-white">Private & Zero-Lockin Onboarding</h4>
-            <p className="text-slate-400 text-sm font-medium leading-relaxed">
+            <p className="text-slate-400 text-sm font-medium leading-relaxed font-sans">
               Our passwordless OTP sign-in ensures secure workspace access across all your devices, while guest mode allows you to explore the interface without providing credentials upfront.
             </p>
           </div>
         </div>
       </section>
 
+      {/* Interactive FAQ Section */}
+      <section className="max-w-4xl mx-auto px-6 py-20 border-t border-white/5 space-y-12">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold tracking-tight text-white">Frequently Asked Questions</h2>
+          <p className="text-slate-400 text-sm font-medium">Clear answers to help you navigate your FinSage workspace.</p>
+        </div>
+        <div className="space-y-4">
+          <FaqItem 
+            q="How does Guest Mode work?" 
+            a="Guest mode runs entirely in your browser's active memory without writing any data to local storage or the database. You can test out our AI coach, log expenses, and design custom categories. When you decide to sign up, simply click 'Log In & Save Data' to merge your guest transactions automatically into your permanent cloud account."
+          />
+          <FaqItem 
+            q="Is my financial data secure?" 
+            a="Yes. FinSage does not use traditional passwords which can be compromised. We enforce passwordless OTP authentication. All data in transit is encrypted, and cloud backups are saved directly to a secure MongoDB cluster dedicated to your account."
+          />
+          <FaqItem 
+            q="Do the AI voice and scan features cost anything?" 
+            a="We offer free speech-to-text and camera receipt scanning trials. You can speak transaction logs or snap a receipt photograph directly without entering any credit card information. Full capabilities are unlocked immediately on trial entry."
+          />
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="max-w-6xl mx-auto px-6 py-12 border-t border-white/5 text-center text-xs text-slate-600 font-bold uppercase tracking-widest space-y-2">
+      <footer className="max-w-[1400px] mx-auto px-8 py-12 border-t border-white/5 text-center text-xs text-slate-600 font-bold uppercase tracking-widest space-y-2">
         <p>© {new Date().getFullYear()} FinSage Workspace. All rights reserved.</p>
-        <p className="text-[10px] opacity-60">Precision Wealth Intelligence Suite v1.1.0</p>
+        <p className="text-[10px] opacity-60">Precision Wealth Intelligence Suite v1.2.0</p>
       </footer>
     </div>
   );
