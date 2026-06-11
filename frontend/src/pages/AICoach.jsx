@@ -8,6 +8,7 @@ import {
   Trash2,
   MessageSquare
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import api from '../services/api';
 
 const AICoach = () => {
@@ -40,6 +41,7 @@ const AICoach = () => {
   const [messages, setMessages] = useState(getSavedMessages);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Sync state with storage when messages change
@@ -108,20 +110,18 @@ const AICoach = () => {
   };
 
   const clearChat = () => {
-    const confirmed = window.confirm("Are you sure you want to clear your chat history?");
-    if (confirmed) {
-      const resetMsg = [
-        { 
-          id: 'welcome', 
-          role: 'model', 
-          content: "Hello! I am your FinSage AI Coach. I have loaded your current monthly salary, recent transactions, and borrows history.\n\nHow can I help you optimize your personal finances today?" 
-        }
-      ];
-      setMessages(resetMsg);
-      if (email) {
-        localStorage.removeItem(`finsage_chat_${email}`);
+    const resetMsg = [
+      { 
+        id: 'welcome', 
+        role: 'model', 
+        content: "Hello! I am your FinSage AI Coach. I have loaded your current monthly salary, recent transactions, and borrows history.\n\nHow can I help you optimize your personal finances today?" 
       }
+    ];
+    setMessages(resetMsg);
+    if (email) {
+      localStorage.removeItem(`finsage_chat_${email}`);
     }
+    setShowClearConfirm(false);
   };
 
   const renderMarkdown = (text) => {
@@ -185,7 +185,7 @@ const AICoach = () => {
 
         {/* Clear Chat Button */}
         <button
-          onClick={clearChat}
+          onClick={() => setShowClearConfirm(true)}
           className="bg-white/5 border border-white/5 hover:bg-red-500/10 hover:border-red-500/20 text-slate-400 hover:text-red-500 p-3.5 rounded-2xl transition-all active:scale-95 shadow-md flex items-center gap-2 text-xs font-bold"
           title="Clear Conversation History"
         >
@@ -282,6 +282,41 @@ const AICoach = () => {
           </button>
         </div>
       </div>
+
+      {/* Custom Clear Chat Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-morphism p-8 rounded-[2rem] border border-white/10 max-w-sm w-full space-y-6 text-center shadow-2xl animate-fade-in"
+          >
+            <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <Trash2 size={24} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white">Clear Chat History</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                This will permanently delete this conversation log. You cannot undo this action.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-5 py-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-bold transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={clearChat}
+                className="px-5 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-all active:scale-95 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <div className="pt-8 text-center shrink-0">
         <p className="text-[10px] text-slate-800 font-bold uppercase tracking-[0.4em]">
