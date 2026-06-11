@@ -5,6 +5,9 @@ const OTPModel = require('../models/OTP');
 
 const JWT_SECRET = 'finsage_ultra_secure_secret_key_2026';
 
+// In-memory OTP cache for Offline/Local Dev Mode
+const memoryOTPCache = {};
+
 // Gmail transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -38,8 +41,8 @@ exports.sendOTP = async (req, res) => {
             { upsert: true, new: true }
         );
     } catch (dbErr) {
-        console.error('OTP DB Save Error:', dbErr.message);
-        return res.status(500).json({ message: 'Failed to generate OTP. Try again.' });
+        console.warn('⚠️ MongoDB Offline. Storing OTP in memory cache:', dbErr.message);
+        memoryOTPCache[normalizedEmail] = { otp, expiresAt };
     }
 
     console.log('\n' + '='.repeat(40));
@@ -80,13 +83,17 @@ exports.verifyOTP = async (req, res) => {
     try {
         storedOTP = await OTPModel.findOne({ email: normalizedEmail });
     } catch (dbErr) {
-        console.error('OTP DB Lookup Error:', dbErr.message);
-        return res.status(500).json({ message: 'Verification failed. Try again.' });
+        console.warn('⚠️ MongoDB Offline. Looking up OTP from memory cache:', dbErr.message);
+        storedOTP = memoryOTPCache[normalizedEmail];
     }
 
     if (!storedOTP) return res.status(400).json({ message: 'OTP not requested' });
     if (new Date() > storedOTP.expiresAt) {
-        await OTPModel.deleteOne({ email: normalizedEmail });
+        try {
+            await OTPModel.deleteOne({ email: normalizedEmail });
+        } catch (dbErr) {
+            delete memoryOTPCache[normalizedEmail];
+        }
         return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
     }
 
@@ -95,7 +102,11 @@ exports.verifyOTP = async (req, res) => {
     }
 
     // OTP is valid — delete it
-    await OTPModel.deleteOne({ email: normalizedEmail });
+    try {
+        await OTPModel.deleteOne({ email: normalizedEmail });
+    } catch (dbErr) {
+        delete memoryOTPCache[normalizedEmail];
+    }
 
     let user;
     let token;
