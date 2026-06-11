@@ -254,6 +254,45 @@ const financeSlice = createSlice({
       // 3. Reset for the new month
       state.lastResetMonth = now.getMonth();
       state.isSalarySet = false; // This will trigger the salary prompt
+    },
+    addCategory: (state, action) => {
+      const { label, icon, color } = action.payload;
+      if (!Array.isArray(state.categories)) {
+        state.categories = [];
+      }
+      const newCat = {
+        id: `custom-${Date.now()}`,
+        label,
+        icon: icon || '📦',
+        color: color || '#111827',
+        isCustom: true
+      };
+      state.categories.push(newCat);
+    },
+    updateCategory: (state, action) => {
+      const { id, label, icon, color } = action.payload;
+      if (!Array.isArray(state.categories)) return;
+      const cat = state.categories.find(c => c.id === id && c.isCustom);
+      if (cat) {
+        cat.label = label;
+        cat.icon = icon || cat.icon;
+        cat.color = color || cat.color;
+      }
+    },
+    deleteCategory: (state, action) => {
+      const catId = action.payload;
+      if (!Array.isArray(state.categories)) return;
+      
+      state.categories = state.categories.filter(cat => cat.id !== catId || !cat.isCustom);
+      
+      if (Array.isArray(state.transactions)) {
+        state.transactions = state.transactions.map(t => {
+          if (t.category === catId) {
+            return { ...t, category: 'other', synced: false };
+          }
+          return t;
+        });
+      }
     }
   },
   extraReducers: (builder) => {
@@ -308,7 +347,10 @@ export const {
   addBorrow,
   repayBorrow,
   markNotificationsRead,
-  startNewMonth
+  startNewMonth,
+  addCategory,
+  updateCategory,
+  deleteCategory
 } = financeSlice.actions;
 
 export const selectFinanceStats = (state) => {

@@ -372,22 +372,24 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
                 {/* Category Grid */}
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-400">Category</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setCategory(cat.id)}
-                        className={`flex flex-col items-center p-3 rounded-2xl border transition-all ${
-                          category === cat.id 
-                          ? 'bg-white text-black border-white shadow-lg' 
-                          : 'bg-white/5 border-white/5 hover:bg-white/10'
-                        }`}
-                      >
-                        <span className="text-xl mb-1">{cat.icon}</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-tight ${category === cat.id ? 'text-black' : 'text-slate-400'}`}>{cat.label.split(' ')[0]}</span>
-                      </button>
-                    ))}
+                  <div className="max-h-[170px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div className="grid grid-cols-3 gap-2">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategory(cat.id)}
+                          className={`flex flex-col items-center p-3 rounded-2xl border transition-all ${
+                            category === cat.id 
+                            ? 'bg-white text-black border-white shadow-lg' 
+                            : 'bg-white/5 border-white/5 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="text-xl mb-1">{cat.icon}</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-tight ${category === cat.id ? 'text-black' : 'text-slate-400'}`}>{cat.label.split(' ')[0]}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -650,22 +652,24 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
                 {/* Category Grid */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Category</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setExtractedData({ ...extractedData, category: cat.id })}
-                        className={`flex flex-col items-center p-2 rounded-xl border transition-all ${
-                          extractedData.category === cat.id 
-                          ? 'bg-white text-black border-white shadow-lg' 
-                          : 'bg-white/5 border-white/5 hover:bg-white/10'
-                        }`}
-                      >
-                        <span className="text-lg mb-0.5">{cat.icon}</span>
-                        <span className={`text-[9px] font-bold uppercase tracking-tight ${extractedData.category === cat.id ? 'text-black' : 'text-slate-400'}`}>{cat.label}</span>
-                      </button>
-                    ))}
+                  <div className="max-h-[170px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div className="grid grid-cols-3 gap-2">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setExtractedData({ ...extractedData, category: cat.id })}
+                          className={`flex flex-col items-center p-2 rounded-xl border transition-all ${
+                            extractedData.category === cat.id 
+                            ? 'bg-white text-black border-white shadow-lg' 
+                            : 'bg-white/5 border-white/5 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="text-lg mb-0.5">{cat.icon}</span>
+                          <span className={`text-[9px] font-bold uppercase tracking-tight ${extractedData.category === cat.id ? 'text-black' : 'text-slate-400'}`}>{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
