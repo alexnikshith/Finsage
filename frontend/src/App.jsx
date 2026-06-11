@@ -13,6 +13,8 @@ import Calendar from './pages/Calendar'
 import AIInsights from './pages/AIInsights'
 import Settings from './pages/Settings'
 import LoginPage from './pages/auth/LoginPage'
+import LandingPage from './pages/LandingPage'
+import GuestWarningBanner from './components/GuestWarningBanner'
 import { startNewMonth, hydrateFinance } from './features/finance/financeSlice'
 import api from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -72,12 +74,31 @@ function App() {
     }
   }, [lastResetMonth, dispatch]);
 
+  // Tab Close Warning for Guests
+  useEffect(() => {
+    if (isAuthenticated && authState.user?.isGuest) {
+      const handleBeforeUnload = (e) => {
+        const msg = "Login for trouble-free transactions, if not all your transactions will be lost.";
+        e.preventDefault();
+        e.returnValue = msg;
+        return msg;
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [isAuthenticated, authState.user?.isGuest]);
+
   return (
     <Router>
       <div className="flex h-screen bg-black text-white font-['Outfit'] antialiased selection:bg-white selection:text-black">
         {isAuthenticated && <Sidebar />}
-        <main className="flex-1 overflow-hidden flex flex-col relative">
+        <main className="flex-1 overflow-hidden flex flex-col relative font-['Outfit']">
+          {isAuthenticated && authState.user?.isGuest && <GuestWarningBanner />}
           <Routes>
+            <Route 
+              path="/" 
+              element={isAuthenticated ? <Dashboard /> : <LandingPage />} 
+            />
             <Route 
               path="/login" 
               element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} 
@@ -88,7 +109,6 @@ function App() {
                 isAuthenticated ? (
                   <div className="flex-1 flex overflow-hidden">
                     <Routes>
-                      <Route path="/" element={<Dashboard />} />
                       <Route path="/analytics" element={<Analytics />} />
                       <Route path="/ai-coach" element={<AICoach />} />
                       <Route path="/transactions" element={<Transactions />} />
@@ -98,10 +118,11 @@ function App() {
                       <Route path="/calendar" element={<Calendar />} />
                       <Route path="/ai-insights" element={<AIInsights />} />
                       <Route path="/settings" element={<Settings />} />
+                      <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                   </div>
                 ) : (
-                  <Navigate to="/login" />
+                  <Navigate to="/" />
                 )
               }
             />

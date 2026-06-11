@@ -33,7 +33,7 @@ const persistenceMiddleware = store => next => action => {
   // The login action wipes the state (Nuclear Reset). If we save here, 
   // we accidentally overwrite the user's real saved data with an empty state!
   if (action.type !== 'auth/loginSuccess' && action.type !== 'auth/logout' && action.type !== 'finance/markTransactionsSynced') {
-    if (state.auth.isAuthenticated && state.auth.user?.email) {
+    if (state.auth.isAuthenticated && state.auth.user?.email && !state.auth.user?.isGuest) {
       const userData = {
         finance: state.finance,
         auth: state.auth

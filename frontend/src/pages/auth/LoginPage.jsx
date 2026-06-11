@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { loginSuccess } from '../../features/auth/authSlice';
 import { hydrateFinance, hardResetFinance } from '../../features/finance/financeSlice';
 import api from '../../services/api';
@@ -13,6 +14,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
@@ -176,6 +178,14 @@ const LoginPage = () => {
               >
                 {loading ? "Sending Pulse..." : "Request Access"}
                 {!loading && <ArrowRight size={20} />}
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => navigate('/')}
+                className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
+              >
+                Back to Home
               </button>
             </motion.form>
           ) : (

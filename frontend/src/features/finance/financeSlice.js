@@ -297,36 +297,56 @@ const financeSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase('auth/loginSuccess', (state, action) => {
-      // Priority 1: Data passed directly in the action payload (Atomic)
-      if (action.payload && action.payload.savedFinance) {
-        console.log("⚛️ Atomic Hydration: Using data from action payload");
-        const finance = action.payload.savedFinance;
-        return sanitizeFinance({
-          ...finance,
-          transactions: (finance.transactions || []).map(t => ({ ...t, synced: true }))
-        });
+      const payload = action.payload || {};
+      const isGuest = payload.isGuest;
+      
+      if (isGuest) {
+        console.log("✈️ Guest Mode: Starting fresh in-memory session");
+        return getInitialState();
       }
 
-      // Priority 2: Fallback to localStorage if payload didn't have it
-      const email = typeof action.payload === 'string' ? action.payload : action.payload.email;
-      try {
-        const savedData = localStorage.getItem(`finsage_data_${email}`);
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          if (parsed.finance) {
-            console.log("💾 Fallback Hydration: Using data from localStorage");
-            const finance = parsed.finance;
-            return sanitizeFinance({
-              ...finance,
-              transactions: (finance.transactions || []).map(t => ({ ...t, synced: true }))
-            });
+      // Real user login! Capture any in-memory guest transactions
+      const guestTransactions = (Array.isArray(state.transactions) && state.transactions.length > 0) 
+        ? state.transactions.map(t => ({ ...t, synced: false })) 
+        : [];
+
+      let mergedFinance = null;
+
+      // Priority 1: Data passed directly in the action payload (Atomic)
+      if (payload.savedFinance) {
+        console.log("⚛️ Atomic Hydration: Using data from action payload");
+        mergedFinance = sanitizeFinance(payload.savedFinance);
+      } else {
+        // Priority 2: Fallback to localStorage if payload didn't have it
+        const email = typeof payload === 'string' ? payload : payload.email;
+        try {
+          const savedData = localStorage.getItem(`finsage_data_${email}`);
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            if (parsed.finance) {
+              console.log("💾 Fallback Hydration: Using data from localStorage");
+              mergedFinance = sanitizeFinance(parsed.finance);
+            }
           }
+        } catch (err) {
+          console.error('Failed to load user data during login:', err);
         }
-      } catch (err) {
-        console.error('Failed to load user data during login:', err);
       }
-      
-      return getInitialState();
+
+      if (!mergedFinance) {
+        mergedFinance = getInitialState();
+      }
+
+      // Migrate guest transactions to user account
+      if (guestTransactions.length > 0) {
+        console.log(`🔄 Migrating ${guestTransactions.length} guest transactions to signed-in user workspace.`);
+        mergedFinance.transactions = [
+          ...(mergedFinance.transactions || []),
+          ...guestTransactions
+        ];
+      }
+
+      return mergedFinance;
     });
 
     builder.addCase('auth/logout', () => {

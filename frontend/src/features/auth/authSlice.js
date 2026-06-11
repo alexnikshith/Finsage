@@ -12,9 +12,10 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     loginSuccess: (state, action) => {
-      // Allow payload to be a string (backwards compatibility) or an object
-      const email = typeof action.payload === 'string' ? action.payload : action.payload.email;
-      state.user = { email };
+      const payload = action.payload || {};
+      const email = typeof payload === 'string' ? payload : payload.email;
+      const isGuest = payload && typeof payload === 'object' ? !!payload.isGuest : false;
+      state.user = { email, isGuest };
       state.isAuthenticated = true;
       state.loading = false;
     },
