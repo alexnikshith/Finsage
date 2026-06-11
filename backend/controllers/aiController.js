@@ -375,10 +375,9 @@ exports.chatWithCoach = async (req, res) => {
     const borrows = finance?.borrows || [];
     const monthlyReports = finance?.monthlyReports || [];
     
-    // Sort and limit transactions context to recent 30 items for model token optimization
-    const recentTxs = [...txs]
+    // Sort transactions history
+    const allTxs = [...txs]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 30)
       .map(t => ({
         title: t.title,
         amount: t.amount,
@@ -394,7 +393,7 @@ Below is the user's real-time financial profile:
 - Base Monthly Salary: ${salary} ${currency}
 - Active Currency: ${currency} (Format outputs using locale: ${locale})
 - Total Transactions: ${txs.length} item(s)
-- Recent 30 Transactions: ${JSON.stringify(recentTxs)}
+- Complete Transaction History: ${JSON.stringify(allTxs)}
 - Debts / Borrows: ${JSON.stringify(borrows.map(b => ({ source: b.source, amount: b.amount, remainingAmount: b.remainingAmount, status: b.status })))}
 - Past Monthly Performance Reports: ${JSON.stringify(monthlyReports.map(r => ({ month: r.month, year: r.year, spent: r.spent, earned: r.earned, savings: r.savings })))}
 
