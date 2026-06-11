@@ -52,12 +52,6 @@ const LandingPage = () => {
           </div>
           <span className="text-xl font-bold tracking-tight">FinSage</span>
         </div>
-        <button 
-          onClick={handleLogin}
-          className="text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl border border-white/5 transition-all"
-        >
-          Sign In
-        </button>
       </header>
 
       {/* Hero Section */}
@@ -99,7 +93,7 @@ const LandingPage = () => {
             onClick={handleStartFree}
             className="w-full sm:w-auto bg-white text-black font-black text-base uppercase tracking-wider px-8 py-5 rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-200 transition-all active:scale-[0.98] shadow-2xl shadow-white/5"
           >
-            Start Free Trial
+            Start Trial
             <ArrowRight size={18} />
           </button>
           <button
