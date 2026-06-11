@@ -9,6 +9,8 @@ import {
   deleteCategory
 } from '../features/finance/financeSlice';
 import { logout } from '../features/auth/authSlice';
+import { setPremium } from '../features/auth/authSlice';
+import api from '../services/api';
 import { 
   User, 
   Shield, 
@@ -22,10 +24,16 @@ import {
   BrainCircuit,
   Plus,
   Edit2,
-  Tag
+  Tag,
+  Crown,
+  Zap,
+  Star,
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmModal from '../components/modals/ConfirmModal';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const SettingItem = ({ icon: Icon, title, description, onClick, variant = 'default', activeValue }) => (
   <div 
@@ -78,6 +86,85 @@ const Settings = () => {
   const [catColor, setCatColor] = useState('#3b82f6');
   const [isDeleteCatModalOpen, setIsDeleteCatModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
+
+  // Subscription state
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Open subscription modal if redirected from PremiumGuard
+  React.useEffect(() => {
+    if (location.state?.openSubscription) {
+      setIsSubscriptionModalOpen(true);
+    }
+  }, [location.state]);
+
+  const isPremium = user?.role === 'premium' && user?.subscriptionExpiry && new Date(user.subscriptionExpiry) > new Date();
+
+  const handleUpgrade = async () => {
+    if (!user || user.isGuest) {
+      alert('Please sign in to upgrade to Premium.');
+      return;
+    }
+    setPaymentLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      // 1. Create Razorpay order on backend
+      const orderRes = await api.post('/payments/create-order');
+      const { orderId, amount, currency: orderCurrency, keyId } = orderRes.data;
+
+      // 2. Open Razorpay checkout
+      const options = {
+        key: keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount,
+        currency: orderCurrency,
+        name: 'FinSage Premium',
+        description: 'Monthly Premium Subscription — ₹99/month',
+        order_id: orderId,
+        prefill: {
+          email: user?.email || '',
+        },
+        theme: { color: '#f59e0b' },
+        handler: async (response) => {
+          try {
+            // 3. Verify payment on backend
+            const verifyRes = await api.post('/payments/verify', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            if (verifyRes.data.success) {
+              dispatch(setPremium({ subscriptionExpiry: verifyRes.data.subscriptionExpiry }));
+              setPaymentSuccess(true);
+              setPaymentLoading(false);
+            }
+          } catch (verifyErr) {
+            console.error('Payment verification failed:', verifyErr);
+            alert('Payment verification failed. Please contact support.');
+            setPaymentLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setPaymentLoading(false),
+        },
+      };
+
+      if (!window.Razorpay) {
+        alert('Razorpay SDK not loaded. Please refresh the page and try again.');
+        setPaymentLoading(false);
+        return;
+      }
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Upgrade failed:', err);
+      alert('Failed to initiate payment. Please try again.');
+      setPaymentLoading(false);
+    }
+  };
 
   const categories = finance.categories || [];
 
@@ -353,6 +440,93 @@ const Settings = () => {
         )}
       </AnimatePresence>
 
+      {/* ── Subscription Modal ── */}
+      <AnimatePresence>
+        {isSubscriptionModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="glass-morphism w-full max-w-lg p-8 rounded-[3rem] border border-amber-500/20 space-y-6"
+            >
+              {paymentSuccess ? (
+                <div className="text-center space-y-4 py-4">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }} className="flex justify-center">
+                    <div className="w-20 h-20 rounded-3xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                      <CheckCircle2 size={40} className="text-amber-400" />
+                    </div>
+                  </motion.div>
+                  <h3 className="text-2xl font-black text-white">You're Premium! 🎉</h3>
+                  <p className="text-slate-400 text-sm">Analytics and AI Coach are now fully unlocked. Enjoy!</p>
+                  <p className="text-xs text-slate-600">Expires: {user?.subscriptionExpiry ? new Date(user.subscriptionExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</p>
+                  <button
+                    onClick={() => { setIsSubscriptionModalOpen(false); setPaymentSuccess(false); }}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-black text-lg hover:opacity-90 transition-all shadow-lg shadow-amber-500/25"
+                  >
+                    Start Exploring Premium
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center">
+                    <div className="flex justify-center mb-4">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center">
+                        <Crown size={30} className="text-amber-400" />
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-black text-white">Upgrade to Premium</h3>
+                    <p className="text-slate-400 text-sm mt-1">Unlock Analytics & AI Coach for ₹99/month</p>
+                  </div>
+
+                  {/* Plan comparison */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/3 border border-white/8 rounded-2xl p-4">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Freemium · Free</p>
+                      {['Dashboard', 'Transactions', 'Budget', 'Borrows', 'Notifications', 'Calendar', 'AI Insights'].map(f => (
+                        <div key={f} className="flex items-center gap-2 py-0.5">
+                          <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                          <span className="text-xs text-slate-300">{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/30 rounded-2xl p-4">
+                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-1"><Crown size={10} /> Premium · ₹99/mo</p>
+                      {['Dashboard', 'Transactions', 'Budget', 'Borrows', 'Notifications', 'Calendar', 'AI Insights'].map(f => (
+                        <div key={f} className="flex items-center gap-2 py-0.5">
+                          <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                          <span className="text-xs text-slate-300">{f}</span>
+                        </div>
+                      ))}
+                      {['Analytics', 'AI Coach'].map(f => (
+                        <div key={f} className="flex items-center gap-2 py-0.5">
+                          <Star size={12} className="text-amber-400 shrink-0" />
+                          <span className="text-xs text-amber-300 font-bold">{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleUpgrade}
+                    disabled={paymentLoading}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-lg flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {paymentLoading ? (
+                      <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Processing...</span>
+                    ) : (
+                      <><Zap size={18} /> Pay ₹99 &amp; Unlock Premium</>
+                    )}
+                  </button>
+                  <p className="text-center text-[10px] text-slate-600">Powered by Razorpay · Secure payment · Cancel anytime</p>
+                  <button onClick={() => setIsSubscriptionModalOpen(false)} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest py-1 hover:text-white transition-colors">Cancel</button>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div>
         <h2 className="text-3xl font-bold">Settings</h2>
         <p className="text-slate-400">Manage your account preferences and data.</p>
@@ -473,6 +647,64 @@ const Settings = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* ── Subscription Section ── */}
+        <div className="space-y-4 pt-4">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-600 ml-2">Subscription Plan</h3>
+          <div className={`glass-morphism p-6 rounded-[2.5rem] border ${ isPremium ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5' } relative overflow-hidden`}>
+            {isPremium && (
+              <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+            )}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${ isPremium ? 'bg-amber-500/20 border border-amber-500/30' : 'bg-white/5' }`}>
+                  <Crown size={22} className={isPremium ? 'text-amber-400' : 'text-slate-500'} />
+                </div>
+                <div>
+                  <h4 className="font-black text-white text-lg">{isPremium ? 'Premium' : 'Freemium'}</h4>
+                  <p className="text-xs text-slate-500">
+                    {isPremium
+                      ? `Expires ${new Date(user.subscriptionExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                      : 'Free plan · Limited access'}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[10px] font-black tracking-widest px-3 py-1.5 rounded-full uppercase ${ isPremium ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-white/5 text-slate-500 border border-white/8' }`}>
+                {isPremium ? '✦ Active' : 'Free'}
+              </span>
+            </div>
+
+            {/* Feature list */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-5">
+              {['Dashboard', 'Transactions', 'Budget', 'Borrows', 'Notifications', 'Calendar', 'AI Insights'].map(f => (
+                <div key={f} className="flex items-center gap-2 py-0.5">
+                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                  <span className="text-xs text-slate-400">{f}</span>
+                </div>
+              ))}
+              {['Analytics', 'AI Coach'].map(f => (
+                <div key={f} className="flex items-center gap-2 py-0.5">
+                  {isPremium
+                    ? <CheckCircle2 size={12} className="text-amber-400 shrink-0" />
+                    : <Lock size={12} className="text-slate-600 shrink-0" />}
+                  <span className={`text-xs ${ isPremium ? 'text-amber-300 font-bold' : 'text-slate-600' }`}>{f}</span>
+                </div>
+              ))}
+            </div>
+
+            {!isPremium && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsSubscriptionModalOpen(true)}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/35 transition-all"
+              >
+                <Zap size={16} />
+                Upgrade to Premium · ₹99/month
+              </motion.button>
+            )}
           </div>
         </div>
 

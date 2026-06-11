@@ -15,7 +15,9 @@ const authSlice = createSlice({
       const payload = action.payload || {};
       const email = typeof payload === 'string' ? payload : payload.email;
       const isGuest = payload && typeof payload === 'object' ? !!payload.isGuest : false;
-      state.user = { email, isGuest };
+      const role = (payload && payload.role) || 'user';
+      const subscriptionExpiry = (payload && payload.subscriptionExpiry) || null;
+      state.user = { email, isGuest, role, subscriptionExpiry };
       state.isAuthenticated = true;
       state.loading = false;
     },
@@ -25,9 +27,23 @@ const authSlice = createSlice({
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
-    }
+    },
+    // Called after successful Razorpay payment verification
+    setPremium: (state, action) => {
+      if (state.user) {
+        state.user.role = 'premium';
+        state.user.subscriptionExpiry = action.payload.subscriptionExpiry || null;
+      }
+    },
+    // Called when subscription expires or is downgraded
+    setFreemium: (state) => {
+      if (state.user) {
+        state.user.role = 'user';
+        state.user.subscriptionExpiry = null;
+      }
+    },
   },
 });
 
-export const { loginSuccess, logout, setLoading } = authSlice.actions;
+export const { loginSuccess, logout, setLoading, setPremium, setFreemium } = authSlice.actions;
 export default authSlice.reducer;

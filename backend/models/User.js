@@ -18,6 +18,7 @@ const UserSchema = new mongoose.Schema({
   lastResetMonth: { type: Number, default: new Date().getMonth() },
   avatar: String,
   role: { type: String, enum: ['user', 'premium', 'admin'], default: 'user' },
+  subscriptionExpiry: { type: Date, default: null },
   preferences: {
     darkMode: { type: Boolean, default: true },
     notifications: { type: Boolean, default: true }

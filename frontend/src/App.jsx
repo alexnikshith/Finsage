@@ -18,6 +18,7 @@ import GuestWarningBanner from './components/GuestWarningBanner'
 import { startNewMonth, hydrateFinance } from './features/finance/financeSlice'
 import api from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
+import PremiumGuard from './components/PremiumGuard'
 
 function App() {
   const authState = useSelector(state => state.auth) || {};
@@ -109,8 +110,8 @@ function App() {
               isAuthenticated ? (
                 <div className="flex-1 flex overflow-hidden">
                   <Routes>
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/ai-coach" element={<AICoach />} />
+                    <Route path="/analytics" element={<PremiumGuard featureName="Analytics"><Analytics /></PremiumGuard>} />
+                    <Route path="/ai-coach" element={<PremiumGuard featureName="AI Coach"><AICoach /></PremiumGuard>} />
                     <Route path="/transactions" element={<Transactions />} />
                     <Route path="/budgets" element={<Budgets />} />
                     <Route path="/borrows" element={<Borrows />} />
