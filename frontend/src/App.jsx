@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
+import AICoach from './pages/AICoach'
 import Transactions from './pages/Transactions'
 import Budgets from './pages/Budgets'
 import Borrows from './pages/Borrows'
@@ -89,6 +90,7 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/analytics" element={<Analytics />} />
+                      <Route path="/ai-coach" element={<AICoach />} />
                       <Route path="/transactions" element={<Transactions />} />
                       <Route path="/budgets" element={<Budgets />} />
                       <Route path="/borrows" element={<Borrows />} />
