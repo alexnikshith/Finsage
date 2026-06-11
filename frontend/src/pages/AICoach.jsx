@@ -309,7 +309,7 @@ const AICoach = () => {
               </button>
               <button
                 onClick={clearChat}
-                className="px-5 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-all active:scale-95 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                className="px-5 py-3 rounded-xl bg-white hover:bg-slate-200 text-black text-sm font-bold transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
               >
                 Delete
               </button>

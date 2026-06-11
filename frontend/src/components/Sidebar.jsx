@@ -62,7 +62,7 @@ const Sidebar = () => {
   const { unreadNotifications } = useSelector(selectFinanceStats);
 
   return (
-    <div className="w-64 h-screen glass-morphism border-r border-white/5 flex flex-col p-6 sticky top-0">
+    <div className="w-64 h-screen glass-morphism border-r border-white/5 flex flex-col pt-6 px-6 pb-3 sticky top-0">
       <div 
         onClick={() => window.location.reload()}
         className="flex items-center gap-3 mb-10 px-2 cursor-pointer group"
@@ -87,7 +87,7 @@ const Sidebar = () => {
         <SidebarItem icon={BrainCircuit} label="AI Insights" to="/ai-insights" />
       </div>
 
-      <div className="pt-6 border-t border-white/5 space-y-2">
+      <div className="pt-3 border-t border-white/5 space-y-2">
         <SidebarItem icon={Settings} label="Settings" to="/settings" />
         <SidebarItem 
           icon={LogOut} 
