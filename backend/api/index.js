@@ -20,17 +20,6 @@ app.use(cors({
 }));
 app.use(helmet());
 
-// Routes
-app.use('/api/auth', require('../routes/authRoutes'));
-app.use('/api/transactions', require('../routes/transactionRoutes'));
-app.use('/api/sync', require('../routes/syncRoutes'));
-app.use('/api/ai', require('../routes/aiRoutes'));
-app.use('/api/payments', require('../routes/paymentRoutes'));
-
-app.get('/api', (req, res) => {
-  res.json({ message: 'FinSage API is running' });
-});
-
 // Connect to MongoDB (cached for serverless warm restarts)
 let isConnected = false;
 const connectDB = async () => {
@@ -48,6 +37,17 @@ const connectDB = async () => {
 app.use(async (req, res, next) => {
   await connectDB();
   next();
+});
+
+// Routes
+app.use('/api/auth', require('../routes/authRoutes'));
+app.use('/api/transactions', require('../routes/transactionRoutes'));
+app.use('/api/sync', require('../routes/syncRoutes'));
+app.use('/api/ai', require('../routes/aiRoutes'));
+app.use('/api/payments', require('../routes/paymentRoutes'));
+
+app.get('/api', (req, res) => {
+  res.json({ message: 'FinSage API is running' });
 });
 
 module.exports = app;
