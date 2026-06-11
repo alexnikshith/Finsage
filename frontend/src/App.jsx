@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -25,6 +25,7 @@ function App() {
   const { isAuthenticated } = authState;
   const { lastResetMonth } = financeState;
   const dispatch = useDispatch();
+  const location = useLocation();
 
   // Background Cloud Sync Pull & Polling
   useEffect(() => {
@@ -89,47 +90,45 @@ function App() {
   }, [isAuthenticated, authState.user?.isGuest]);
 
   return (
-    <Router>
-      <div className="flex h-screen bg-black text-white font-['Outfit'] antialiased selection:bg-white selection:text-black">
-        {isAuthenticated && <Sidebar />}
-        <main className="flex-1 overflow-hidden flex flex-col relative font-['Outfit']">
-          {isAuthenticated && authState.user?.isGuest && <GuestWarningBanner />}
-          <Routes>
-            <Route 
-              path="/" 
-              element={isAuthenticated ? <Dashboard /> : <LandingPage />} 
-            />
-            <Route 
-              path="/login" 
-              element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} 
-            />
-            <Route
-              path="/*"
-              element={
-                isAuthenticated ? (
-                  <div className="flex-1 flex overflow-hidden">
-                    <Routes>
-                      <Route path="/analytics" element={<Analytics />} />
-                      <Route path="/ai-coach" element={<AICoach />} />
-                      <Route path="/transactions" element={<Transactions />} />
-                      <Route path="/budgets" element={<Budgets />} />
-                      <Route path="/borrows" element={<Borrows />} />
-                      <Route path="/notifications" element={<Notifications />} />
-                      <Route path="/calendar" element={<Calendar />} />
-                      <Route path="/ai-insights" element={<AIInsights />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="*" element={<Navigate to="/" />} />
-                    </Routes>
-                  </div>
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <div className="flex h-screen bg-black text-white font-['Outfit'] antialiased selection:bg-white selection:text-black">
+      {isAuthenticated && location.pathname !== '/login' && <Sidebar />}
+      <main className="flex-1 overflow-hidden flex flex-col relative font-['Outfit']">
+        {isAuthenticated && authState.user?.isGuest && <GuestWarningBanner />}
+        <Routes>
+          <Route 
+            path="/" 
+            element={isAuthenticated ? <Dashboard /> : <LandingPage />} 
+          />
+          <Route 
+            path="/login" 
+            element={(!isAuthenticated || authState.user?.isGuest) ? <LoginPage /> : <Navigate to="/" />} 
+          />
+          <Route
+            path="/*"
+            element={
+              isAuthenticated ? (
+                <div className="flex-1 flex overflow-hidden">
+                  <Routes>
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/ai-coach" element={<AICoach />} />
+                    <Route path="/transactions" element={<Transactions />} />
+                    <Route path="/budgets" element={<Budgets />} />
+                    <Route path="/borrows" element={<Borrows />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/ai-insights" element={<AIInsights />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </Routes>
+                </div>
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
+        </Routes>
+      </main>
+    </div>
   )
 }
 
