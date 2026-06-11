@@ -75,7 +75,7 @@ const Sidebar = () => {
         </h1>
       </div>
 
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 min-h-0">
         <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/" />
         <SidebarItem icon={BarChart3} label="Analytics" to="/analytics" />
         <SidebarItem icon={TrendingUp} label="Transactions" to="/transactions" />
