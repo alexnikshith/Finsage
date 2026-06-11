@@ -450,6 +450,7 @@ Guidelines:
       // Split into clean words to prevent substring matching bugs (e.g., "this" matching "hi")
       const words = lowerMsg.split(/\s+/).map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,""));
       const isGreeting = words.some(w => ['hi', 'hello', 'hey', 'yo', 'greetings', 'hola'].includes(w));
+      const isCompliment = words.some(w => ['good', 'great', 'thanks', 'thank', 'awesome', 'cool', 'nice', 'perfect', 'wow', 'amazing', 'excellent', 'wonderful', 'superb', 'okay', 'ok', 'noted', 'understood', 'got', 'sure', 'alright'].includes(w));
 
       // Helper: today's ISO date string (YYYY-MM-DD)
       const todayStr = new Date().toISOString().split('T')[0];
@@ -465,8 +466,17 @@ Guidelines:
       const asksBalance  = lowerMsg.includes('balance') || lowerMsg.includes('remaining') || lowerMsg.includes('left') || lowerMsg.includes('saving') || lowerMsg.includes('track');
       const asksCategory = lowerMsg.includes('category') || lowerMsg.includes('categories') || lowerMsg.includes('breakdown');
 
-      if (isGreeting) {
-        reply = `Hello! I am your FinSage AI Coach (Offline Backup Mode). \n\nHow can I help you optimize your personal finances today?`;
+      if (isCompliment) {
+        const complimentReplies = [
+          `Glad I could help! 😊 Is there anything else you'd like to know about your finances?`,
+          `Thank you! Feel free to ask me anything about your spending, savings, or budget.`,
+          `Happy to assist! Let me know if you have any more financial questions.`,
+          `Appreciate it! I'm here whenever you need financial insights. 💰`
+        ];
+        reply = complimentReplies[Math.floor(Math.random() * complimentReplies.length)];
+
+      } else if (isGreeting) {
+        reply = `Hello! I'm your FinSage AI Coach. 👋\n\nHow can I help you optimize your personal finances today?`;
 
       } else if (asksSpent && asksToday) {
         // TODAY'S spending only
@@ -526,7 +536,7 @@ Guidelines:
         reply = `**Budget Overview:**\n- Monthly Salary: **${salary} ${currency}**\n- Total Expenses (all-time): **${totalExpenses} ${currency}**\n- Total Transactions: **${txs.length}**`;
 
       } else {
-        reply = `I am your FinSage AI Coach. (Note: Gemini API is currently rate-limited, so I am answering using my backup rules engine.)\n\nYou asked: "${userMessage}"\n\nTo get full AI coaching insights, please consider signing in!`;
+        reply = `I'm here to help with your personal finances! 💡\n\nYou can ask me things like:\n- *"How much did I spend today?"*\n- *"What is my balance?"*\n- *"Show my spending by category"*\n- *"How much did I earn this month?"*\n\nWhat would you like to know?`;
       }
       
       return res.json({
