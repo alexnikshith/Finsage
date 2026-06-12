@@ -37,22 +37,7 @@ const PremiumGuard = ({ children, featureName = 'this feature', featureIcon: Fea
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-amber-500/5 blur-3xl" />
         </div>
 
-        {/* Lock icon */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="flex justify-center mb-8"
-        >
-          <div className="relative">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center">
-              <Lock size={40} className="text-amber-400" />
-            </div>
-            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-              <Crown size={16} className="text-white" />
-            </div>
-          </div>
-        </motion.div>
+
 
         {/* Title */}
         <div className="text-center mb-8">
