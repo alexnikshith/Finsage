@@ -76,19 +76,7 @@ function App() {
     }
   }, [lastResetMonth, dispatch]);
 
-  // Tab Close Warning for Guests
-  useEffect(() => {
-    if (isAuthenticated && authState.user?.isGuest) {
-      const handleBeforeUnload = (e) => {
-        const msg = "Login for trouble-free transactions, if not all your transactions will be lost.";
-        e.preventDefault();
-        e.returnValue = msg;
-        return msg;
-      };
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }
-  }, [isAuthenticated, authState.user?.isGuest]);
+
 
   return (
     <div className="flex h-screen bg-black text-white font-['Outfit'] antialiased selection:bg-white selection:text-black">
