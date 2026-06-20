@@ -65,7 +65,7 @@ const Borrows = () => {
   const dispatch = useDispatch();
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [repayModal, setRepayModal] = useState({ isOpen: false, borrow: null, amount: '' });
+  const [repayModal, setRepayModal] = useState({ isOpen: false, borrow: null, amount: '', showWarning: false });
   const [newBorrow, setNewBorrow] = useState({ source: '', amount: '' });
 
   const formatCurrency = (val) => {
@@ -92,12 +92,18 @@ const Borrows = () => {
   };
 
   const handleRepay = () => {
-    if (repayModal.amount > 0 && repayModal.borrow) {
+    const amount = Number(repayModal.amount);
+    if (amount > (repayModal.borrow?.remainingAmount || 0) && !repayModal.showWarning) {
+      setRepayModal(prev => ({ ...prev, showWarning: true }));
+      return;
+    }
+    
+    if (amount > 0 && repayModal.borrow) {
       dispatch(repayBorrow({
         borrowId: repayModal.borrow.id,
-        repayAmount: Number(repayModal.amount)
+        repayAmount: amount
       }));
-      setRepayModal({ isOpen: false, borrow: null, amount: '' });
+      setRepayModal({ isOpen: false, borrow: null, amount: '', showWarning: false });
     }
   };
 
@@ -132,7 +138,7 @@ const Borrows = () => {
           ) : (
             <div className="space-y-4">
               {pendingBorrows.map(b => (
-                <BorrowCard key={b.id} borrow={b} formatCurrency={formatCurrency} onRepay={(borrow) => setRepayModal({ isOpen: true, borrow, amount: '' })} />
+                <BorrowCard key={b.id} borrow={b} formatCurrency={formatCurrency} onRepay={(borrow) => setRepayModal({ isOpen: true, borrow, amount: '', showWarning: false })} />
               ))}
             </div>
           )}
@@ -220,7 +226,7 @@ const Borrows = () => {
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl pointer-events-auto">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="glass-morphism w-full max-w-md p-8 rounded-[3rem] border border-white/10 space-y-6 relative pointer-events-auto">
               <button 
-                onClick={() => setRepayModal({ isOpen: false, borrow: null, amount: '' })}
+                onClick={() => setRepayModal({ isOpen: false, borrow: null, amount: '', showWarning: false })}
                 className="absolute right-6 top-6 text-slate-500 hover:text-white"
               >
                 <X size={20} />
@@ -229,22 +235,34 @@ const Borrows = () => {
                 <h3 className="text-2xl font-bold">Repay {repayModal.borrow?.source}</h3>
                 <p className="text-slate-400 text-sm">Remaining Debt: {formatCurrency(repayModal.borrow?.remainingAmount)}</p>
               </div>
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Payment Amount</label>
-                  <input 
-                    type="number" 
-                    required 
-                    max={repayModal.borrow?.remainingAmount}
-                    placeholder="How much are you paying back?" 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-xl font-black focus:outline-none focus:ring-1 focus:ring-white/50 text-white" 
-                    value={repayModal.amount} 
-                    onChange={e => setRepayModal({ ...repayModal, amount: e.target.value })} 
-                  />
+              {repayModal.showWarning ? (
+                <div className="space-y-4">
+                  <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl flex items-start gap-3 text-amber-500">
+                    <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium">The payment amount ({formatCurrency(repayModal.amount)}) exceeds the remaining debt ({formatCurrency(repayModal.borrow?.remainingAmount)}). Are you sure you want to continue?</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={handleRepay} className="flex-1 bg-amber-500 text-black py-4 rounded-2xl font-black text-sm hover:bg-amber-400 transition-all cursor-pointer">Continue to Pay</button>
+                    <button onClick={() => setRepayModal(prev => ({ ...prev, showWarning: false }))} className="flex-1 bg-white/5 text-white py-4 rounded-2xl font-black text-sm hover:bg-white/10 transition-all cursor-pointer">Edit Amount</button>
+                  </div>
                 </div>
-                <button onClick={handleRepay} className="w-full bg-white text-black py-4 rounded-2xl font-black text-lg hover:bg-slate-200 transition-all cursor-pointer">Confirm Payment</button>
-                <button onClick={() => setRepayModal({ isOpen: false, borrow: null, amount: '' })} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest py-2 cursor-pointer">Cancel</button>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Payment Amount</label>
+                    <input 
+                      type="number" 
+                      required 
+                      placeholder="How much are you paying back?" 
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-xl font-black focus:outline-none focus:ring-1 focus:ring-white/50 text-white" 
+                      value={repayModal.amount} 
+                      onChange={e => setRepayModal({ ...repayModal, amount: e.target.value })} 
+                    />
+                  </div>
+                  <button onClick={handleRepay} className="w-full bg-white text-black py-4 rounded-2xl font-black text-lg hover:bg-slate-200 transition-all cursor-pointer">Confirm Payment</button>
+                  <button onClick={() => setRepayModal({ isOpen: false, borrow: null, amount: '', showWarning: false })} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest py-2 cursor-pointer">Cancel</button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
