@@ -137,20 +137,42 @@ const financeSlice = createSlice({
       if (!remoteFinance) return state;
 
       const sanitizedRemote = sanitizeFinance(remoteFinance);
+      
+      // Merge Transactions
       const remoteTx = sanitizedRemote.transactions.map(t => ({ ...t, synced: true }));
       const localTx = Array.isArray(state.transactions) ? state.transactions : [];
       const unsyncedLocalTx = localTx.filter(lt => !lt.synced && !remoteTx.some(rt => rt.id === lt.id));
       const mergedTransactions = [...remoteTx, ...unsyncedLocalTx];
 
+      // Merge Borrows
+      const remoteBorrows = sanitizedRemote.borrows.map(b => ({ ...b, synced: true }));
+      const localBorrows = Array.isArray(state.borrows) ? state.borrows : [];
+      const unsyncedLocalBorrows = localBorrows.filter(lb => !lb.synced && !remoteBorrows.some(rb => rb.id === lb.id));
+      
+      // If a local borrow was paid but not synced, we need to preserve its paid status
+      // We will override remote borrows with any matching local unsynced modifies 
+      const finalBorrows = remoteBorrows.map(rb => {
+        const localMod = localBorrows.find(lb => lb.id === rb.id && !lb.synced);
+        return localMod ? { ...localMod, synced: false } : rb;
+      });
+
+      const mergedBorrows = [...finalBorrows, ...unsyncedLocalBorrows];
+
       return {
         ...sanitizedRemote,
-        transactions: mergedTransactions
+        transactions: mergedTransactions,
+        borrows: mergedBorrows
       };
     },
     markTransactionsSynced: (state) => {
       if (Array.isArray(state.transactions)) {
         state.transactions.forEach(t => {
           t.synced = true;
+        });
+      }
+      if (Array.isArray(state.borrows)) {
+        state.borrows.forEach(b => {
+          b.synced = true;
         });
       }
     },
@@ -171,7 +193,8 @@ const financeSlice = createSlice({
         remainingAmount: Number(amount),
         source,
         date: date || new Date().toISOString(),
-        status: 'pending'
+        status: 'pending',
+        synced: false
       };
       
       state.borrows.push(newBorrow);
@@ -202,6 +225,7 @@ const financeSlice = createSlice({
           borrow.remainingAmount = 0;
           borrow.status = 'paid';
         }
+        borrow.synced = false;
         
         // Add repayment as an expense
         state.transactions.push({
