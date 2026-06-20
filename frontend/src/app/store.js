@@ -53,8 +53,11 @@ const persistenceMiddleware = store => next => action => {
         localStorage.setItem(`finsage_data_${state.auth.user.email}`, JSON.stringify(userData));
         localStorage.setItem('finsage_last_user', state.auth.user.email);
 
-        // 2. Cloud Sync: immediate for transaction changes, debounced for everything else
-        const isTransactionChange = action.type === 'finance/addTransaction' || action.type === 'finance/deleteTransaction';
+        // 2. Cloud Sync: immediate for transaction and borrow changes, debounced for everything else
+        const isTransactionChange = action.type === 'finance/addTransaction' || 
+                                    action.type === 'finance/deleteTransaction' ||
+                                    action.type === 'finance/addBorrow' ||
+                                    action.type === 'finance/repayBorrow';
 
         if (isTransactionChange) {
           // Push immediately so refresh / cross-device sees up-to-date data
