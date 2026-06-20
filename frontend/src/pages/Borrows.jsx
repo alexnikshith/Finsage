@@ -67,6 +67,7 @@ const Borrows = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [repayModal, setRepayModal] = useState({ isOpen: false, borrow: null, amount: '', showWarning: false });
   const [newBorrow, setNewBorrow] = useState({ source: '', amount: '' });
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(5);
 
   const formatCurrency = (val) => {
     try {
@@ -148,9 +149,17 @@ const Borrows = () => {
         <div className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-600 ml-2">Repayment History</h3>
           <div className="space-y-4 opacity-60">
-            {paidBorrows.map(b => (
+            {paidBorrows.slice(0, visibleHistoryCount).map(b => (
               <BorrowCard key={b.id} borrow={b} formatCurrency={formatCurrency} />
             ))}
+            {paidBorrows.length > visibleHistoryCount && (
+              <button 
+                onClick={() => setVisibleHistoryCount(prev => prev + 5)}
+                className="w-full py-3 mt-4 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-white border border-white/5 hover:border-white/20 rounded-2xl transition-all"
+              >
+                Load More
+              </button>
+            )}
             {paidBorrows.length === 0 && (
                <div className="p-8 text-center border border-white/5 rounded-3xl">
                   <p className="text-slate-600 text-sm">History of cleared debts will appear here.</p>
