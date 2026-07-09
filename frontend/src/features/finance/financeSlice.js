@@ -277,7 +277,6 @@ const financeSlice = createSlice({
 
       // 3. Reset for the new month
       state.lastResetMonth = now.getMonth();
-      state.isSalarySet = false; // This will trigger the salary prompt
     },
     addCategory: (state, action) => {
       const { label, icon, color } = action.payload;
