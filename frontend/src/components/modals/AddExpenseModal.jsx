@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 
 const AddExpenseModal = ({ isOpen, onClose }) => {
-  const categories = useSelector(state => state.finance.categories);
+  const rawCategories = useSelector(state => state.finance.categories);
+  const categories = rawCategories ? [...rawCategories].sort((a, b) => a.id === 'other' ? 1 : b.id === 'other' ? -1 : 0) : [];
   const { currency = 'INR', locale = 'en-IN' } = useSelector(state => state.finance);
   const dispatch = useDispatch();
 
@@ -21,7 +22,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
   // Standard Form State
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('other');
+  const [category, setCategory] = useState('');
 
   // AI & Media States
   const [mode, setMode] = useState('form'); // 'form', 'camera', 'voice', 'processing', 'review'
@@ -35,7 +36,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
   const [extractedData, setExtractedData] = useState({
     amount: '',
     merchant: '',
-    category: 'other',
+    category: '',
     date: getLocalDateString(),
     confidence: 1.0,
     source: 'manual',
@@ -79,7 +80,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
   const resetForm = () => {
     setAmount('');
     setDescription('');
-    setCategory('other');
+    setCategory('');
     setMode('form');
     setProcessingMessage('');
     setIsListening(false);
@@ -161,7 +162,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
         setExtractedData({
           amount: extracted.amount || '',
           merchant: extracted.merchant || '',
-          category: extracted.category || 'other',
+          category: extracted.category || '',
           date: extracted.date || getLocalDateString(),
           confidence: extracted.confidence || 0.8,
           source: 'camera',
@@ -245,7 +246,7 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
         setExtractedData({
           amount: extracted.amount || '',
           merchant: extracted.merchant || '',
-          category: extracted.category || 'other',
+          category: extracted.category || '',
           date: extracted.date || getLocalDateString(),
           confidence: extracted.confidence || 0.8,
           source: 'voice',
@@ -408,7 +409,8 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
 
               <button
                 type="submit"
-                className="w-full bg-white text-black py-3 rounded-2xl font-bold transition-all active:scale-[0.98] hover:bg-slate-200"
+                disabled={!category}
+                className={`w-full py-3 rounded-2xl font-bold transition-all ${category ? 'bg-white text-black active:scale-[0.98] hover:bg-slate-200' : 'bg-white/20 text-white/50 cursor-not-allowed'}`}
               >
                 Save Expense
               </button>
@@ -705,7 +707,8 @@ const AddExpenseModal = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-2xl transition-all active:scale-[0.98] text-sm px-6 shadow-lg shadow-emerald-600/20"
+                  disabled={!extractedData.category}
+                  className={`flex-[2] py-3 font-extrabold rounded-2xl transition-all text-sm px-6 shadow-lg ${extractedData.category ? 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-[0.98] shadow-emerald-600/20' : 'bg-emerald-600/30 text-white/50 cursor-not-allowed'}`}
                 >
                   Confirm & Save
                 </button>
